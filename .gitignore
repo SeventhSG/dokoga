@@ -23,6 +23,9 @@ out/
 .env.local
 *.key
 
+# Local project brief (do not publish)
+PROJECT_BRIEF.md
+
 # OS / editor
 .DS_Store
 Thumbs.db
