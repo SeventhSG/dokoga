@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# Data (raw downloads / large artifacts)
+data/raw/
+*.zip
+*.sqlite
+*.db
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+.vercel/
+
+# Env / secrets
+.env
+.env.local
+*.key
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
