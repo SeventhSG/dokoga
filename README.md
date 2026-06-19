@@ -91,6 +91,40 @@ python scripts/05_build_dataset.py # сглобява етикета -> data/pro
 python scripts/06_train.py         # тренира -> models/ + metrics.json
 ```
 
+## Backend (LLM слой)
+
+AI чат на български над данните — с **tool-use граундинг**: LLM-ът никога не
+смята числа сам, само разказва проверени стойности от `projects.sqlite`.
+
+### Архитектура: retrieve → narrate
+1. **route** — моделът избира една заявка от въпроса (JSON `{tool, arg}`).
+2. **retrieve** — `tools.py` изпълнява детерминистична SQL заявка → верни числа.
+3. **narrate** — моделът разказва САМО тези числа на български.
+
+Избран е този модел (а не native function calling), защото Gemma често не
+поддържа tools — така граундингът е гарантиран при всеки модел.
+
+### Файлове (`backend/`)
+- `tools.py` — 5 SQLite инструмента: `get_region_stats`, `get_contractor_stats`,
+  `search_contracts`, `top_risky_regions`, `top_risky_contractors`.
+- `agent.py` — `route → retrieve → narrate` + fallback верига от модели.
+- `serve.py` — FastAPI: `POST /chat {message}` и `GET /health`.
+- `.env` — `GOOGLE_API_KEY` (в .gitignore, не се качва).
+
+### Модели (Google GenAI)
+Главен: `gemma-4-31b-it` · fallback: `gemini-3.1-flash-lite-preview`,
+`gemma-4-26b-a4b-it`. При грешка се опитва следващия по реда.
+
+### Стартиране
+```bash
+cd backend
+pip install -r requirements.txt
+echo "GOOGLE_API_KEY=..." > .env
+uvicorn serve:app --reload          # HTTP сервиз
+python agent.py "въпрос"            # CLI тест
+python test_endpoint.py            # тест на /chat
+```
+
 ## Етика
 
 Изходът е „очаквано забавяне по исторически данни", не обвинение в измама.
