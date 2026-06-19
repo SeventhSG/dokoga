@@ -1,0 +1,137 @@
+/* ДОКОГА? — roadwork control room design system
+   Tokens: asphalt base + safety-orange signature + green/amber/red risk scale.
+   Fonts: Unbounded (display), Manrope (body), JetBrains Mono (data). */
+
+:root {
+  /* surface */
+  --bg: #090c11;
+  --bg-2: #0f141c;
+  --surface: #151c26;
+  --glass: rgba(18, 25, 35, 0.62);
+  --glass-brd: rgba(255, 255, 255, 0.1);
+  --line: rgba(255, 255, 255, 0.08);
+
+  /* ink */
+  --ink: #eaf0f7;
+  --ink-2: #9fadbd;
+  --ink-3: #6a7787;
+
+  /* brand + signal */
+  --orange: #ff6a2b;
+  --orange-2: #ff8a52;
+  --cool: #5bc8d6;
+  --green: #2bd46a;
+  --amber: #ffb020;
+  --red: #ff4d4d;
+
+  /* shape scale (locked): panels 14, controls 10, chips/buttons pill */
+  --r: 14px;
+  --r-sm: 10px;
+
+  /* z-index scale */
+  --z-map: 0;
+  --z-hud: 10;
+  --z-chat: 20;
+  --z-detail: 30;
+  --z-toast: 40;
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  font-family: "Manrope", system-ui, sans-serif;
+  color: var(--ink);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+}
+
+body {
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+
+.mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.display { font-family: "Unbounded", "Manrope", sans-serif; letter-spacing: -0.03em; }
+
+/* ---------- glass (purposeful HUD over the live map) ---------- */
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid var(--glass-brd);
+  border-radius: var(--r);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+    0 20px 50px rgba(0, 0, 0, 0.45);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass { background: #121925f2; backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+
+/* ---------- controls ---------- */
+button { font-family: inherit; cursor: pointer; }
+
+.btn {
+  border: 1px solid var(--glass-brd);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: transform 0.15s var(--ease), background 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.btn:hover { background: rgba(255, 255, 255, 0.09); }
+.btn:active { transform: translateY(1px); }
+.btn-primary {
+  background: var(--orange);
+  border-color: transparent;
+  color: #1a0c04;
+}
+.btn-primary:hover { background: var(--orange-2); }
+
+.field {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-brd);
+  border-radius: var(--r-sm);
+  color: var(--ink);
+  padding: 11px 13px;
+  font: inherit;
+  font-size: 14px;
+  transition: border-color 0.15s var(--ease);
+}
+.field::placeholder { color: var(--ink-3); }
+.field:focus-visible { outline: none; border-color: var(--orange); }
+
+:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+
+/* ---------- scrollbar ---------- */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.14); border-radius: 99px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------- Leaflet dark integration ---------- */
+.leaflet-container { background: var(--bg); font: inherit; }
+.leaflet-control-attribution {
+  background: rgba(9, 12, 17, 0.7) !important;
+  color: var(--ink-3) !important;
+  backdrop-filter: blur(6px);
+  font-size: 10px !important;
+}
+.leaflet-control-attribution a { color: var(--ink-2) !important; }
+.leaflet-control-zoom { display: none; }
+.repair-dot { transition: stroke-width 0.15s var(--ease); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
