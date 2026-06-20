@@ -1,8 +1,25 @@
-import { MapContainer, TileLayer, CircleMarker } from "react-leaflet";
-import { useMemo } from "react";
+import { MapContainer, TileLayer, CircleMarker, useMap } from "react-leaflet";
+import { useEffect, useMemo } from "react";
 import type { RepairFeature } from "../lib/types";
 import { riskRamp } from "../lib/risk";
 import type { Theme } from "../theme";
+
+export interface FocusTarget {
+  lat: number;
+  lon: number;
+  zoom: number;
+  key: number; // bump to re-trigger even for same coords
+}
+
+/** Smoothly flies the map to a focus target (driven by the AI chat). */
+function Flyer({ focus }: { focus: FocusTarget | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!focus) return;
+    map.flyTo([focus.lat, focus.lon], focus.zoom, { duration: 1.4, easeLinearity: 0.18 });
+  }, [focus, map]);
+  return null;
+}
 
 const TILES: Record<Theme, string> = {
   dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
@@ -19,9 +36,10 @@ interface Props {
   selected: string | null;
   onSelect: (f: RepairFeature) => void;
   theme: Theme;
+  focus: FocusTarget | null;
 }
 
-export default function MapView({ features, selected, onSelect, theme }: Props) {
+export default function MapView({ features, selected, onSelect, theme, focus }: Props) {
   const stroke = theme === "dark" ? "rgba(255,255,255,0.5)" : "rgba(15,23,32,0.4)";
 
   const markers = useMemo(() => {
@@ -67,6 +85,7 @@ export default function MapView({ features, selected, onSelect, theme }: Props) 
         subdomains="abcd"
       />
       {markers}
+      <Flyer focus={focus} />
     </MapContainer>
   );
 }

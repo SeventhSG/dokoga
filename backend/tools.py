@@ -43,14 +43,27 @@ def search_contracts(keyword: str, limit: int = 5) -> list:
     """Търси ремонтни договори по дума в заглавието; връща най-рисковите."""
     con = _con()
     rows = con.execute(
-        "SELECT title, region_name, value, risk, expected_days, overrun_days, supplier "
+        "SELECT ocid, title, region_name, value, risk, expected_days, overrun_days, supplier "
         "FROM contracts WHERE title LIKE ? ORDER BY risk DESC LIMIT ?",
         (f"%{keyword}%", limit)).fetchall()
     con.close()
-    return [{"заглавие": r["title"], "област": r["region_name"],
+    return [{"ocid": r["ocid"], "заглавие": r["title"], "област": r["region_name"],
              "стойност": r["value"], "риск": round(r["risk"], 2),
              "очаквани_дни": r["expected_days"], "реално_просрочване": r["overrun_days"],
              "изпълнител": r["supplier"]} for r in rows]
+
+
+def top_by_value(arg: str = "", limit: int = 5) -> list:
+    """Най-скъпите обществено-значими ремонти (най-голям бюджет). На картата."""
+    con = _con()
+    rows = con.execute(
+        "SELECT ocid, title, region_name, value, risk, expected_days, supplier "
+        "FROM contracts WHERE sector != 'other' AND value IS NOT NULL "
+        "ORDER BY value DESC LIMIT ?", (limit,)).fetchall()
+    con.close()
+    return [{"ocid": r["ocid"], "заглавие": r["title"], "област": r["region_name"],
+             "стойност": r["value"], "риск": round(r["risk"], 2),
+             "очаквани_дни": r["expected_days"], "изпълнител": r["supplier"]} for r in rows]
 
 def top_risky_regions(limit: int = 5) -> list:
     """Областите с най-висок дял просрочени договори (мин. 20 договора)."""
@@ -79,6 +92,7 @@ TOOLS = {
     "get_region_stats": get_region_stats,
     "get_contractor_stats": get_contractor_stats,
     "search_contracts": search_contracts,
+    "top_by_value": top_by_value,
     "top_risky_regions": top_risky_regions,
     "top_risky_contractors": top_risky_contractors,
 }

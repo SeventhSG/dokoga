@@ -33,10 +33,16 @@ export interface RepairCollection {
   features: RepairFeature[];
 }
 
+export interface ChatFocus {
+  ocid?: string | null;
+  region?: string | null;
+}
+
 export interface ChatResponse {
   answer: string;
   tool?: string;
   arg?: string;
   data?: unknown;
+  focus?: ChatFocus | null;
   error?: string;
 }
