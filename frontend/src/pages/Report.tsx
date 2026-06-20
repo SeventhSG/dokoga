@@ -5,6 +5,7 @@ import { ReportLayer } from "../components/ReportLayer";
 import { ReportForm } from "../components/ReportForm";
 import { ReportPanel } from "../components/ReportPanel";
 import ThemeToggle from "../components/ThemeToggle";
+import TrackpadPan from "../components/TrackpadPan";
 import { useTheme, type Theme } from "../theme";
 import { listReports } from "../lib/reportsApi";
 import type { ReportPin } from "../lib/reportTypes";
@@ -50,7 +51,7 @@ export default function Report() {
         <ThemeToggle theme={theme} onToggle={toggle} />
       </div>
 
-      <MapContainer className="map" center={[42.73, 25.4]} zoom={7} minZoom={6} maxZoom={18} preferCanvas>
+      <MapContainer className="map" center={[42.73, 25.4]} zoom={7} minZoom={6} maxZoom={18} scrollWheelZoom={false} preferCanvas>
         <TileLayer
           key={theme}
           url={TILES[theme]}
@@ -63,6 +64,7 @@ export default function Report() {
           onPick={(id) => { setDraft(null); setPicked(id); }}
           onMapClick={(lat, lng) => { setPicked(null); setDraft({ lat, lng }); }}
         />
+        <TrackpadPan />
       </MapContainer>
 
       {!draft && picked == null && (

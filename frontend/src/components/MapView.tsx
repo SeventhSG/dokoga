@@ -3,6 +3,7 @@ import { useEffect, useMemo } from "react";
 import type { RepairFeature } from "../lib/types";
 import { riskRamp } from "../lib/risk";
 import type { Theme } from "../theme";
+import TrackpadPan from "./TrackpadPan";
 
 export interface FocusTarget {
   lat: number;
@@ -75,6 +76,7 @@ export default function MapView({ features, selected, onSelect, theme, focus }: 
       minZoom={6}
       maxZoom={13}
       zoomControl={false}
+      scrollWheelZoom={false}
       preferCanvas
       attributionControl
     >
@@ -85,6 +87,7 @@ export default function MapView({ features, selected, onSelect, theme, focus }: 
         subdomains="abcd"
       />
       {markers}
+      <TrackpadPan />
       <Flyer focus={focus} />
     </MapContainer>
   );
