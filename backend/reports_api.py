@@ -1,16 +1,29 @@
 """FastAPI router for the citizen report loop."""
 import json, math
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, Cookie, Response, HTTPException
 from pydantic import BaseModel, Field
 
 import reports_db, geo, contracts_match, corroboration, antibrigade, auth
 
 router = APIRouter()
 DUP_RADIUS_M = 50
+COOKIE = "dokoga_sess"
+COOKIE_MAX_AGE = 60 * 60 * 24 * 365  # 1 year
+
+# Ensure the report tables exist on the configured DB whenever this router is
+# loaded (tests monkeypatch reports_db.DB and re-init their own temp DBs).
+try:
+    _c = reports_db.con(); reports_db.init_db(_c); _c.close()
+except Exception:
+    pass
 
 
-def _uid(authorization):
-    uid = auth.user_from_token((authorization or "").removeprefix("Bearer ").strip())
+def _token(authorization, cookie_token):
+    return cookie_token or (authorization or "").removeprefix("Bearer ").strip() or None
+
+
+def _uid(con, authorization, cookie_token):
+    uid = auth.user_from_token(con, _token(authorization, cookie_token))
     if not uid:
         raise HTTPException(401, "unauthorized")
     return uid
@@ -24,10 +37,18 @@ def _meters(a_lat, a_lng, b_lat, b_lng):
     return 2 * R * math.asin(math.sqrt(x))
 
 
+_ERR_STATUS = {"bad_domain": 400, "no_name": 400, "rate_limited": 429,
+               "expired": 410, "too_many": 429, "bad_code": 400}
+
+
+class RequestIn(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    email: str = Field(min_length=5, max_length=120)
+
+
 class VerifyIn(BaseModel):
-    phone: str = Field(min_length=5, max_length=20)
+    email: str = Field(min_length=5, max_length=120)
     code: str = Field(min_length=6, max_length=6)
-    fingerprint: str = Field(min_length=1, max_length=120)
 
 
 class ReportIn(BaseModel):
@@ -35,35 +56,63 @@ class ReportIn(BaseModel):
     lng: float = Field(ge=22.0, le=29.0)
     category: str = Field(max_length=30)
     note: str = Field(default="", max_length=280)
-    device_id: int
+    device_id: int | None = None
 
 
 class ConfirmIn(BaseModel):
-    device_id: int
     kind: str = Field(default="confirm", pattern="^(confirm|fixed|nothere)$")
+    device_id: int | None = None
 
 
 @router.post("/auth/request")
-def auth_request(body: dict):
-    auth.request_otp(body.get("phone", "")); return {"sent": True}
-
-
-@router.post("/auth/verify")
-def auth_verify(body: VerifyIn):
+def auth_request(body: RequestIn):
     con = reports_db.con()
     try:
-        return auth.verify_otp(con, body.phone, body.code, body.fingerprint)
-    except ValueError:
-        raise HTTPException(400, "bad_code")
+        return auth.request_code(con, body.name, body.email)
+    except ValueError as e:
+        raise HTTPException(_ERR_STATUS.get(str(e), 400), str(e))
     finally:
         con.close()
 
 
-@router.post("/reports")
-def create_report(body: ReportIn, authorization: str = Header(default="")):
-    uid = _uid(authorization)
+@router.post("/auth/verify")
+def auth_verify(body: VerifyIn, response: Response):
     con = reports_db.con()
     try:
+        s = auth.verify_code(con, body.email, body.code)
+    except ValueError as e:
+        raise HTTPException(_ERR_STATUS.get(str(e), 400), str(e))
+    finally:
+        con.close()
+    response.set_cookie(COOKIE, s["token"], max_age=COOKIE_MAX_AGE,
+                        httponly=True, samesite="lax", path="/")
+    return s
+
+
+@router.get("/auth/me")
+def auth_me(authorization: str = Header(default=""), dokoga_sess: str | None = Cookie(default=None)):
+    con = reports_db.con()
+    try:
+        uid = auth.user_from_token(con, _token(authorization, dokoga_sess))
+        if not uid:
+            raise HTTPException(401, "unauthorized")
+        return auth.user_record(con, uid)
+    finally:
+        con.close()
+
+
+@router.post("/auth/logout")
+def auth_logout(response: Response):
+    response.delete_cookie(COOKIE, path="/")
+    return {"ok": True}
+
+
+@router.post("/reports")
+def create_report(body: ReportIn, authorization: str = Header(default=""),
+                  dokoga_sess: str | None = Cookie(default=None)):
+    con = reports_db.con()
+    try:
+        uid = _uid(con, authorization, dokoga_sess)
         gh = geo.encode(body.lat, body.lng)
         for row in con.execute(
             "SELECT id, lat, lng FROM reports WHERE category=? AND status IN "
@@ -87,10 +136,11 @@ def create_report(body: ReportIn, authorization: str = Header(default="")):
 
 
 @router.post("/reports/{report_id}/confirm")
-def confirm_report(report_id: int, body: ConfirmIn, authorization: str = Header(default="")):
-    uid = _uid(authorization)
+def confirm_report(report_id: int, body: ConfirmIn, authorization: str = Header(default=""),
+                   dokoga_sess: str | None = Cookie(default=None)):
     con = reports_db.con()
     try:
+        uid = _uid(con, authorization, dokoga_sess)
         if not con.execute("SELECT 1 FROM reports WHERE id=?", (report_id,)).fetchone():
             raise HTTPException(404, "no_report")
         ok, reason = antibrigade.can_confirm(con, report_id, uid, body.device_id)

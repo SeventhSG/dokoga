@@ -19,10 +19,10 @@ def test_same_user_cannot_confirm_twice(tmp_path, monkeypatch):
     assert ok is False
 
 
-def test_same_device_other_user_blocked(tmp_path, monkeypatch):
+def test_different_user_can_confirm(tmp_path, monkeypatch):
     c = _seed(tmp_path, monkeypatch); _add(c, 5, 99)
-    ok, _ = antibrigade.can_confirm(c, 1, 6, 99)
-    assert ok is False
+    ok, _ = antibrigade.can_confirm(c, 1, 6, 99)  # different account → allowed
+    assert ok is True
 
 
 def test_single_ip_cluster_flags_brigade(tmp_path, monkeypatch):

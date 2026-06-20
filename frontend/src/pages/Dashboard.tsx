@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowLeft } from "@phosphor-icons/react";
+import { ArrowLeft, SlidersHorizontal, X } from "@phosphor-icons/react";
 import { loadRepairs } from "../lib/api";
 import type { RepairFeature, ChatFocus } from "../lib/types";
 import { riskLevel } from "../lib/risk";
@@ -40,6 +40,7 @@ export default function Dashboard() {
   const [selected, setSelected] = useState<RepairFeature | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [focus, setFocus] = useState<FocusTarget | null>(null);
+  const [sheet, setSheet] = useState(false); // мобилен bottom sheet за филтрите
   const focusKey = useRef(0);
   const reduce = useReducedMotion();
 
@@ -105,8 +106,13 @@ export default function Dashboard() {
     <div className="stage">
       <MapView features={features} selected={selected?.properties.ocid ?? null} onSelect={setSelected} theme={theme} focus={focus} />
 
-      <div className="hud">
+      {sheet && <div className="sheet-backdrop" onClick={() => setSheet(false)} />}
+
+      <div className={`hud${sheet ? " sheet-open" : ""}`}>
         <div className="rail">
+          <button className="sheet-handle" onClick={() => setSheet(false)} aria-label="Затвори">
+            <span /> <X size={15} weight="bold" />
+          </button>
           <motion.div {...rail(0)} style={{ position: "relative", zIndex: 40 }}>
             <Brand total={all.length} atRisk={nationalHigh} />
           </motion.div>
@@ -126,8 +132,13 @@ export default function Dashboard() {
         <Link to="/" className="btn">
           <ArrowLeft size={15} weight="bold" /> Начало
         </Link>
+        <Link to="/report" className="btn btn-report-nav">⚠ Сигнали</Link>
         <ThemeToggle theme={theme} onToggle={toggle} />
       </div>
+
+      <button className="sheet-fab" onClick={() => setSheet(true)} aria-label="Филтри и легенда">
+        <SlidersHorizontal size={18} weight="bold" /> Филтри
+      </button>
 
       <AnimatePresence>
         {selected && (

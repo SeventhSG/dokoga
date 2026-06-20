@@ -34,8 +34,9 @@ app = FastAPI(title="Докога? API", version="0.2")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ORIGINS,
+    allow_credentials=True,
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "Authorization"],
     max_age=600,
 )
 app.include_router(reports_api.router)

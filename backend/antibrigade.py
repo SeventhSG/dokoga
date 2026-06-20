@@ -6,13 +6,11 @@ Brigade signals must NOT collide with the legitimate verify-at-3 path, so:
   legitimately verify a popular problem)."""
 
 
-def can_confirm(con, report_id, user_id, device_id):
+def can_confirm(con, report_id, user_id, device_id=None):
+    # Email is the identity now: one verified account = one vote per problem.
     if con.execute("SELECT 1 FROM confirmations WHERE report_id=? AND user_id=?",
                    (report_id, user_id)).fetchone():
         return False, "already_confirmed"
-    if con.execute("SELECT 1 FROM confirmations WHERE report_id=? AND device_id=? AND user_id!=?",
-                   (report_id, device_id, user_id)).fetchone():
-        return False, "device_reused"
     return True, "ok"
 
 

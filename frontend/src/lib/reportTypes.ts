@@ -31,5 +31,5 @@ export interface ReportDetail extends ReportPin {
 export interface Session {
   token: string;
   user_id: number;
-  device_id: number;
+  name: string;
 }
