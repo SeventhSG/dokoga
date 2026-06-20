@@ -1,6 +1,10 @@
 import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "motion/react";
-import { MapTrifold, ArrowRight, Database, Brain, MapPin } from "@phosphor-icons/react";
+import {
+  MapTrifold, ArrowRight, Database, Brain, MapPin,
+  FlowArrow, ChartLineUp, Scales, ShieldCheck, GitBranch,
+  ArrowsClockwise, ClockCounterClockwise, Megaphone,
+} from "@phosphor-icons/react";
 import { useTheme } from "../theme";
 import ThemeToggle from "../components/ThemeToggle";
 import DelayBar from "../components/DelayBar";
@@ -12,6 +16,41 @@ const STEPS = [
   { icon: Database, t: "Събираме данните", d: "25 980 договора за обществени поръчки от ЦАИС ЕОП (data.egov.bg), по стандарт OCDS." },
   { icon: Brain, t: "AI оценява риска", d: "LightGBM модел учи кои договори се удължават, по стойност, регион, сезон и изпълнител." },
   { icon: MapPin, t: "Виждаш го на картата", d: "Всеки ремонт е точка, оцветена по риск. Питай AI-я на български за всяка област." },
+];
+
+// — AI fluency: how the model is justified and why it doesn't hallucinate —
+const AI = [
+  {
+    icon: FlowArrow,
+    t: "Изтегли → разкажи",
+    d: "Чатът никога не смята сам. Рутер избира заявка, SQLite връща верните числа, LLM-ът само ги разказва на български. Нула халюцинирани цифри.",
+  },
+  {
+    icon: ChartLineUp,
+    t: "Истински ML, не за украса",
+    d: "LightGBM рисков модел: ROC-AUC 0.637, PR-AUC 0.138 — 2.1× над случайното. Най-силни сигнали: стойност, обещан срок и месец на старт.",
+  },
+  {
+    icon: Scales,
+    t: "Честно за границите",
+    d: "Регресорът за дни не бие baseline (само 289 просрочени примера) — затова показваме медиана по сегмент, не измислено число. Не крием слабостите.",
+  },
+];
+
+// — data integrity / method: visible on the page, not just in the README —
+const METHOD = [
+  { k: "Източник", v: "ЦАИС ЕОП по стандарт OCDS, през data.egov.bg (АОП). Лиценз CC0 — публични, отворени данни." },
+  { k: "Етикет", v: "Групиране по ocid → планиран край спрямо финалния (след анекси) = просрочване в дни. 4 470 договора със срок, 289 просрочени." },
+  { k: "Долна граница", v: "Публикуван е само 2026 — отворените ремонти още не са просрочени. Реалните забавяния са по-големи от показаните." },
+  { k: "Етика", v: "Изходът е „риск / червени флагове“ по история, не обвинение в измама на конкретна фирма." },
+];
+
+// — sustainability: how this lives beyond the weekend —
+const NEXT = [
+  { icon: ArrowsClockwise, t: "Сам се обновява", d: "OCDS пакетите излизат на всеки две седмици. Pipeline-ът (scripts 04→07) се пуска наново и моделът се претренира — без ръчна работа." },
+  { icon: ClockCounterClockwise, t: "Назад във времето", d: "Добавяне на архива 2024–2025 → стотици завършени договори повече → по-точен етикет и по-силен модел." },
+  { icon: GitBranch, t: "Отворено за всеки", d: "Кодът е публичен, данните са CC0. Готов API за журналисти, общини и граждани, които искат да проверят свой ремонт." },
+  { icon: Megaphone, t: "Граждански натиск", d: "Споделяема карта на всеки ремонт → личен, вирусен сигнал → реална обществена прозрачност, а не още един dashboard." },
 ];
 
 export default function Landing() {
@@ -109,6 +148,38 @@ export default function Landing() {
         </div>
       </section>
 
+      <section className="lp-trust">
+        <motion.div className="lp-trust-head" {...fade()}>
+          <span className="lp-eyebrow mono"><Brain size={14} weight="bold" /> AI, на който можеш да вярваш</span>
+          <h2 className="lp-h2 display">Числата са верни. AI-ят само ги разказва.</h2>
+        </motion.div>
+        <div className="lp-trust-grid">
+          {AI.map((c, i) => (
+            <motion.div className="lp-trust-card glass" key={c.t} {...fade(i * 0.08)}>
+              <c.icon size={26} weight="duotone" className="lp-trust-ic" />
+              <h3>{c.t}</h3>
+              <p>{c.d}</p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      <section className="lp-method">
+        <motion.div className="lp-method-head" {...fade()}>
+          <span className="lp-eyebrow mono"><ShieldCheck size={14} weight="bold" /> Метод и почтеност</span>
+          <h2 className="lp-h2 display">Откъде идват данните и как смятаме</h2>
+          <p>Прозрачно за източника, етикета и границите — за да можеш да провериш всяко число.</p>
+        </motion.div>
+        <div className="lp-method-grid">
+          {METHOD.map((m, i) => (
+            <motion.div className="lp-method-row" key={m.k} {...fade(i * 0.06)}>
+              <span className="lp-method-k mono">{m.k}</span>
+              <span className="lp-method-v">{m.v}</span>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
       <section className="lp-predict" id="predict">
         <motion.div className="lp-predict-head" {...fade()}>
           <h2 className="lp-h2 display">Провери своя ремонт</h2>
@@ -117,6 +188,24 @@ export default function Landing() {
         <motion.div className="glass lp-predict-card" {...fade(0.1)}>
           <Predictor />
         </motion.div>
+      </section>
+
+      <section className="lp-next">
+        <motion.div className="lp-next-head" {...fade()}>
+          <span className="lp-eyebrow mono"><ArrowsClockwise size={14} weight="bold" /> Отвъд уикенда</span>
+          <h2 className="lp-h2 display">Замислен да живее, не да остане демо</h2>
+        </motion.div>
+        <div className="lp-next-grid">
+          {NEXT.map((n, i) => (
+            <motion.div className="lp-next-card" key={n.t} {...fade(i * 0.08)}>
+              <n.icon size={24} weight="duotone" className="lp-next-ic" />
+              <div>
+                <h3>{n.t}</h3>
+                <p>{n.d}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
       </section>
 
       <footer className="lp-footer">

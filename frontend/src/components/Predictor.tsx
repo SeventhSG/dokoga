@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Gauge } from "@phosphor-icons/react";
+import { Gauge, ShareNetwork } from "@phosphor-icons/react";
 import CustomSelect from "./CustomSelect";
 import DelayBar from "./DelayBar";
 import { predictRepair } from "../lib/api";
 import type { PredictResult } from "../lib/api";
 import { RISK } from "../lib/risk";
+import { shareCard } from "../lib/shareCard";
 
 const REGIONS = [
   "Благоевград", "Бургас", "Варна", "Велико Търново", "Видин", "Враца", "Габрово", "Добрич",
@@ -43,6 +44,18 @@ export default function Predictor() {
   }
 
   const color = res ? RISK[res.level].color : "var(--orange)";
+
+  async function share() {
+    if (!res) return;
+    await shareCard({
+      region: form.region,
+      category: CATS.find((c) => c.value === form.category)?.label ?? form.category,
+      riskPct: Math.round(res.risk * 100),
+      level: res.level,
+      expectedDays: res.expected_days,
+      plannedDays: form.planned_days,
+    });
+  }
 
   return (
     <div className="predictor">
@@ -92,6 +105,9 @@ export default function Predictor() {
               </div>
               <DelayBar planned={100} overrun={res.expected_days} height={14} capSize={18} />
             </div>
+            <button className="btn pred-share" onClick={share}>
+              <ShareNetwork size={16} weight="bold" /> Сподели резултата
+            </button>
             <p className="pred-note">
               Оценка по исторически данни от обществените поръчки. Не е присъда за конкретна фирма.
             </p>
