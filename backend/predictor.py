@@ -2,6 +2,7 @@
 Зарежда risk.txt (LightGBM) + медиани на просрочване; връща риск + очаквани дни.
 """
 import os
+import json
 import numpy as np
 import pandas as pd
 import lightgbm as lgb
@@ -10,9 +11,16 @@ HERE = os.path.dirname(__file__)
 MODEL = os.path.join(HERE, "..", "models", "risk.txt")
 DAYS_MODEL = os.path.join(HERE, "..", "models", "days.txt")
 DATA = os.path.join(HERE, "..", "data", "processed", "all_contracts.csv")
+RATES_FILE = os.path.join(HERE, "..", "data", "processed", "rates.json")
+
+try:
+    with open(RATES_FILE, encoding="utf-8") as f:
+        _rates = json.load(f)
+except Exception:
+    _rates = {"global": 0.065, "buyer": {}, "supplier": {}}
 
 FEATS = ["category", "sector", "log_value", "value_per_day", "region",
-         "start_month", "planned_days", "is_repair", "n_tenderers"]
+         "start_month", "planned_days", "is_repair", "n_tenderers", "buyer_rate", "supplier_rate"]
 SECTORS = ["roads", "water", "parks", "lighting", "public", "other"]
 
 # име на област -> NUTS код (както в експорта)
@@ -46,6 +54,12 @@ def predict(d: dict) -> dict:
     sector = str(d.get("sector", "roads"))
     if sector not in SECTORS:
         sector = "other"
+    
+    buyer = str(d.get("buyer") or "")
+    supplier = str(d.get("supplier") or "")
+    buyer_rate = _rates["buyer"].get(buyer, _rates["global"])
+    supplier_rate = _rates["supplier"].get(supplier, _rates["global"])
+
     row = pd.DataFrame([{
         "category": str(d.get("category", "works")),
         "sector": sector,
@@ -56,6 +70,8 @@ def predict(d: dict) -> dict:
         "planned_days": planned,
         "is_repair": int(d.get("is_repair", 1)),
         "n_tenderers": float(d.get("n_tenderers", 1)),
+        "buyer_rate": buyer_rate,
+        "supplier_rate": supplier_rate,
     }])
     for c in ("category", "region", "sector"):
         row[c] = row[c].astype(CATS[c])
@@ -67,12 +83,16 @@ def predict(d: dict) -> dict:
     floor = MED.get(sector, OVERALL)
     exp = int(max(7, min(900, round(0.7 * pred + 0.3 * floor))))
     return {"risk": round(p, 3), "level": level, "expected_days": exp,
-            "drivers": _drivers(value, planned, sector, int(d.get("month", 6)), float(d.get("n_tenderers", 1)))}
+            "drivers": _drivers(value, planned, sector, int(d.get("month", 6)), float(d.get("n_tenderers", 1)), buyer_rate, supplier_rate)}
 
 
-def _drivers(value, planned, sector, month, ntend):
+def _drivers(value, planned, sector, month, ntend, buyer_rate, supplier_rate):
     """Кратки човешки обяснения кои фактори тежат - за AI анализа/UI."""
     out = []
+    if supplier_rate > _rates["global"] * 1.5:
+        out.append("рисков изпълнител (чести просрочвания в миналото)")
+    if buyer_rate > _rates["global"] * 1.5:
+        out.append("рисков възложител (чести забавяния на този възложител)")
     if value >= 500000:
         out.append("висока стойност (по-големите договори се удължават по-често)")
     if planned <= 60:

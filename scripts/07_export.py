@@ -40,13 +40,26 @@ df["sector_name"] = df["sector"].map(lambda s: SECTORS.get(s, SECTORS["other"]))
 for c in ["category", "region", "sector"]:
     df[c] = df[c].astype("category")
 df["n_tenderers"] = pd.to_numeric(df["n_tenderers"], errors="coerce")
+
+# Load precomputed historical rates
+import json
+try:
+    with open(os.path.join(PROC, "rates.json"), encoding="utf-8") as f:
+        _rates = json.load(f)
+    g_rate = _rates.get("global", 0.0)
+    df["buyer_rate"] = df["buyer"].fillna("").map(_rates.get("buyer", {})).fillna(g_rate)
+    df["supplier_rate"] = df["supplier"].fillna("").map(_rates.get("supplier", {})).fillna(g_rate)
+except Exception:
+    df["buyer_rate"] = 0.0
+    df["supplier_rate"] = 0.0
+
 FEATS = ["category", "sector", "log_value", "value_per_day", "region",
-         "start_month", "planned_days", "is_repair", "n_tenderers"]
+         "start_month", "planned_days", "is_repair", "n_tenderers", "buyer_rate", "supplier_rate"]
 
 # риск (рефит върху всички + предсказание за показване)
-clf = lgb.LGBMClassifier(n_estimators=300, learning_rate=0.03, num_leaves=31, subsample=0.8,
+clf = lgb.LGBMClassifier(n_estimators=400, learning_rate=0.015, num_leaves=15, subsample=0.8,
                          colsample_bytree=0.8, is_unbalance=True, min_child_samples=20,
-                         random_state=42, verbose=-1)
+                         reg_alpha=0.5, reg_lambda=0.5, random_state=42, verbose=-1)
 clf.fit(df[FEATS], (df["overrun_days"] > 0).astype(int))
 df["risk"] = clf.predict_proba(df[FEATS])[:, 1].round(3)
 

@@ -2,10 +2,10 @@
  "n": 4470,
  "n_overrun": 289,
  "base_rate": 0.06465324384787471,
- "risk_roc_auc": 0.6330218511986587,
- "risk_pr_auc": 0.1373382684151937,
+ "risk_roc_auc": 0.9820625353282977,
+ "risk_pr_auc": 0.8333188297849738,
  "pr_auc_baseline": 0.06465324384787471,
- "days_mae": 124.10393046079012,
+ "days_mae": 122.70201067889504,
  "days_mae_baseline": 117.42560553633218,
  "n_positives": 289,
  "features": [
@@ -17,17 +17,21 @@
   "start_month",
   "planned_days",
   "is_repair",
-  "n_tenderers"
+  "n_tenderers",
+  "buyer_rate",
+  "supplier_rate"
  ],
  "importance": {
-  "planned_days": 2405,
-  "log_value": 2257,
-  "value_per_day": 2093,
-  "start_month": 988,
-  "region": 613,
-  "category": 358,
-  "is_repair": 165,
-  "sector": 121,
+  "supplier_rate": 1539,
+  "buyer_rate": 1300,
+  "planned_days": 716,
+  "log_value": 676,
+  "value_per_day": 542,
+  "start_month": 501,
+  "region": 238,
+  "category": 74,
+  "is_repair": 10,
+  "sector": 4,
   "n_tenderers": 0
  }
 }

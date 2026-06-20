@@ -23,17 +23,42 @@ if "sector" not in df.columns:
 for c in ["category", "region", "sector"]:
     df[c] = df[c].fillna("NA").astype("category")
 df["n_tenderers"] = pd.to_numeric(df["n_tenderers"], errors="coerce")
+
+# --- Feature Engineering: Historical Delay Rates ---
+target = (df["overrun_days"] > 0).astype(int)
+global_mean = float(target.mean())
+smooth = 5
+
+def smooth_rate(col):
+    col = col.fillna("")
+    means = target.groupby(col).mean()
+    counts = col.value_counts()
+    return (counts * means + smooth * global_mean) / (counts + smooth)
+
+buyer_rate = smooth_rate(df["buyer"])
+supplier_rate = smooth_rate(df["supplier"])
+
+df["buyer_rate"] = df["buyer"].fillna("").map(buyer_rate).fillna(global_mean)
+df["supplier_rate"] = df["supplier"].fillna("").map(supplier_rate).fillna(global_mean)
+
+json.dump({
+    "global": global_mean,
+    "buyer": buyer_rate.to_dict(),
+    "supplier": supplier_rate.to_dict()
+}, open(os.path.join(PROC, "rates.json"), "w", encoding="utf-8"), ensure_ascii=False)
+
 FEATS = ["category", "sector", "log_value", "value_per_day", "region",
-         "start_month", "planned_days", "is_repair", "n_tenderers"]
+         "start_month", "planned_days", "is_repair", "n_tenderers", "buyer_rate", "supplier_rate"]
 X = df[FEATS]
 y_clf = (df["overrun_days"] > 0).astype(int)
 
 print(f"договори: {len(df)} | с просрочване: {int(y_clf.sum())} ({100*y_clf.mean():.1f}%)")
 
 # ---- Модел 1: риск (класификация) ----
-clf = lgb.LGBMClassifier(n_estimators=300, learning_rate=0.03, num_leaves=31,
+clf = lgb.LGBMClassifier(n_estimators=400, learning_rate=0.015, num_leaves=15,
                          subsample=0.8, colsample_bytree=0.8, is_unbalance=True,
-                         min_child_samples=20, random_state=42, verbose=-1)
+                         min_child_samples=20, reg_alpha=0.5, reg_lambda=0.5,
+                         random_state=42, verbose=-1)
 skf = StratifiedKFold(5, shuffle=True, random_state=42)
 oof = cross_val_predict(clf, X, y_clf, cv=skf, method="predict_proba")[:, 1]
 auc = roc_auc_score(y_clf, oof)
