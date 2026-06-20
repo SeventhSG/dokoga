@@ -108,12 +108,20 @@ AI чат на български над данните — с **tool-use гра
 - `tools.py` — 5 SQLite инструмента: `get_region_stats`, `get_contractor_stats`,
   `search_contracts`, `top_risky_regions`, `top_risky_contractors`.
 - `agent.py` — `route → retrieve → narrate` + fallback верига от модели.
-- `serve.py` — FastAPI: `POST /chat {message}` и `GET /health`.
+- `predictor.py` — единичен LightGBM модел за `/predict` (риск + очаквани дни).
+- `serve.py` — FastAPI: `POST /chat`, `POST /predict`, `GET /health`.
 - `.env` — `GOOGLE_API_KEY` (в .gitignore, не се качва).
 
 ### Модели (Google GenAI)
-Главен: `gemma-4-31b-it` · fallback: `gemini-3.1-flash-lite-preview`,
+Главен: **`gemini-3.1-flash-lite-preview`** (по-бърз) · fallback: `gemma-4-31b-it`,
 `gemma-4-26b-a4b-it`. При грешка се опитва следващия по реда.
+
+### Защити
+- **Rate limit** (30 заявки/мин на IP) на `/chat` и `/predict`.
+- **CORS allowlist** (конфигурируем чрез `ALLOWED_ORIGINS`).
+- Input cap (≤500 знака), премахване на контролни символи, security headers
+  (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`).
+- LLM-ът не смята числа → невъзможно да халюцинира суми (граундинг).
 
 ### Стартиране
 ```bash
@@ -131,21 +139,23 @@ python test_endpoint.py            # тест на /chat
 точки, върху нея плаващи glass HUD панели и AI чат.
 
 ### Стек
-- **React + Vite + TypeScript**
-- **Leaflet** (react-leaflet) + тъмни CARTO плочки → 1029 ремонта от `projects.geojson`, оцветени по риск (зелено/жълто/червено)
-- **Motion** за входни анимации (с `prefers-reduced-motion`)
+- **React + Vite + TypeScript** · **react-router** (`/` landing, `/app` карта)
+- **Leaflet** (react-leaflet) + CARTO плочки (light/dark) → 1029 ремонта от `projects.geojson`, оцветени по **континуален** риск-градиент (зелено→жълто→оранж→червено)
+- **Motion** за анимации (с `prefers-reduced-motion`)
 - **Phosphor** иконки · self-host шрифтове (Unbounded / Manrope / JetBrains Mono, пълна кирилица)
 
 ### Дизайн
-Асфалтов тъмен фон + safety-orange сигнатура. Сигнатурен елемент: **delay bar**
+Асфалтов фон + safety-orange сигнатура. Сигнатурен елемент: **delay bar**
 (обещан срок + щриховано просрочване, завършващо с „?"). Frosted-glass HUD панели
-само върху живата карта (целево, с reduced-transparency fallback). Заключена тъмна
-тема, контраст ≥4.5:1, една радиус- и цветова скала.
+само върху живата карта (целево, с reduced-transparency fallback).
+**Light + dark тема** (токени, превключвател, по подразбиране тъмна), контраст
+≥4.5:1, една радиус- и цветова скала. Custom select (не native white-on-white).
+Дизайнът минава през skill-овете frontend-design, ui-ux-pro-max, impeccable, taste.
 
 ### Екрани
-- Ляв rail: бранд, филтър по област (28 области), легенда за риска
-- Клик на точка → детайл-карта (риск %, очаквано забавяне, стойност, изпълнител)
-- AI чат док → вика backend `/chat`, разказва само проверени числа
+- **Landing** (`/`) — hero, статистики, „Как работи", интерактивен предиктор, footer.
+- **Карта** (`/app`) — ляв rail (бранд, филтър по 28 области, легенда); клик на точка → детайл-карта; AI чат док → `/chat`.
+- **Предиктор** — въвеждаш договор (тип, област, стойност, срок, оферти, месец) → `/predict` връща риск % + очаквани дни забавяне.
 
 ### Стартиране
 ```bash

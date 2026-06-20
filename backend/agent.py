@@ -11,7 +11,8 @@ import tools
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 _client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
 
-MODELS = ["gemma-4-31b-it", "gemini-3.1-flash-lite-preview", "gemma-4-26b-a4b-it"]
+# flash-lite пръв — по-бърз; gemma моделите са fallback
+MODELS = ["gemini-3.1-flash-lite-preview", "gemma-4-31b-it", "gemma-4-26b-a4b-it"]
 
 def generate(prompt: str, temperature: float = 0.2) -> str:
     """Опитва моделите по ред; връща текст от първия успешен."""

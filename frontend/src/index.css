@@ -1,40 +1,38 @@
-/* ДОКОГА? — roadwork control room design system
-   Tokens: asphalt base + safety-orange signature + green/amber/red risk scale.
+/* ДОКОГА? — roadwork control room design system (light + dark)
    Fonts: Unbounded (display), Manrope (body), JetBrains Mono (data). */
 
 :root {
-  /* surface */
+  /* dark (default / control-room) */
   --bg: #090c11;
   --bg-2: #0f141c;
   --surface: #151c26;
   --glass: rgba(18, 25, 35, 0.62);
   --glass-brd: rgba(255, 255, 255, 0.1);
   --line: rgba(255, 255, 255, 0.08);
-
-  /* ink */
+  --control: rgba(255, 255, 255, 0.05);
+  --control-h: rgba(255, 255, 255, 0.1);
   --ink: #eaf0f7;
   --ink-2: #9fadbd;
   --ink-3: #6a7787;
+  --vg: 9, 12, 17;
+  --glass-hi: rgba(255, 255, 255, 0.14);
 
-  /* brand + signal */
+  /* brand + signal (theme-independent) */
   --orange: #ff6a2b;
   --orange-2: #ff8a52;
+  --on-orange: #1a0c04;
   --cool: #5bc8d6;
   --green: #2bd46a;
   --amber: #ffb020;
   --red: #ff4d4d;
 
-  /* shape scale (locked): panels 14, controls 10, chips/buttons pill */
   --r: 14px;
   --r-sm: 10px;
-
-  /* z-index scale */
   --z-map: 0;
   --z-hud: 10;
   --z-chat: 20;
   --z-detail: 30;
-  --z-toast: 40;
-
+  --z-nav: 40;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 
   font-family: "Manrope", system-ui, sans-serif;
@@ -42,21 +40,32 @@
   color-scheme: dark;
 }
 
-* { box-sizing: border-box; }
-
-html, body, #root {
-  margin: 0;
-  height: 100%;
-  background: var(--bg);
+[data-theme="light"] {
+  --bg: #eef1f5;
+  --bg-2: #e3e8ef;
+  --surface: #ffffff;
+  --glass: rgba(255, 255, 255, 0.66);
+  --glass-brd: rgba(15, 23, 32, 0.1);
+  --line: rgba(15, 23, 32, 0.09);
+  --control: rgba(15, 23, 32, 0.05);
+  --control-h: rgba(15, 23, 32, 0.09);
+  --ink: #0f1720;
+  --ink-2: #47525f;
+  --ink-3: #7a8490;
+  --vg: 238, 241, 245;
+  --glass-hi: rgba(255, 255, 255, 0.7);
+  color-scheme: light;
 }
 
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; height: 100%; background: var(--bg); }
 body {
   font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  overflow: hidden;
 }
+a { color: inherit; }
 
 .mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
 .display { font-family: "Unbounded", "Manrope", sans-serif; letter-spacing: -0.03em; }
@@ -68,40 +77,33 @@ body {
   -webkit-backdrop-filter: blur(20px) saturate(150%);
   border: 1px solid var(--glass-brd);
   border-radius: var(--r);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
-    0 20px 50px rgba(0, 0, 0, 0.45);
+  box-shadow: inset 0 1px 0 var(--glass-hi), 0 20px 50px rgba(0, 0, 0, 0.4);
 }
+[data-theme="light"] .glass { box-shadow: inset 0 1px 0 var(--glass-hi), 0 18px 44px rgba(15, 23, 32, 0.14); }
 @media (prefers-reduced-transparency: reduce) {
-  .glass { background: #121925f2; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .glass { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--surface); }
 }
 
 /* ---------- controls ---------- */
-button { font-family: inherit; cursor: pointer; }
-
+button { font-family: inherit; cursor: pointer; color: inherit; }
 .btn {
   border: 1px solid var(--glass-brd);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--control);
   color: var(--ink);
   border-radius: 999px;
-  padding: 9px 16px;
-  font-size: 13px;
+  padding: 10px 18px;
+  font-size: 13.5px;
   font-weight: 600;
   transition: transform 0.15s var(--ease), background 0.15s var(--ease), border-color 0.15s var(--ease);
 }
-.btn:hover { background: rgba(255, 255, 255, 0.09); }
+.btn:hover { background: var(--control-h); }
 .btn:active { transform: translateY(1px); }
-.btn-primary {
-  background: var(--orange);
-  border-color: transparent;
-  color: #1a0c04;
-}
+.btn-primary { background: var(--orange); border-color: transparent; color: var(--on-orange); }
 .btn-primary:hover { background: var(--orange-2); }
 
 .field {
   width: 100%;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--control);
   border: 1px solid var(--glass-brd);
   border-radius: var(--r-sm);
   color: var(--ink);
@@ -112,25 +114,22 @@ button { font-family: inherit; cursor: pointer; }
 }
 .field::placeholder { color: var(--ink-3); }
 .field:focus-visible { outline: none; border-color: var(--orange); }
-
 :focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
 
-/* ---------- scrollbar ---------- */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.14); border-radius: 99px; }
+::-webkit-scrollbar-thumb { background: var(--control-h); border-radius: 99px; }
 ::-webkit-scrollbar-track { background: transparent; }
 
-/* ---------- Leaflet dark integration ---------- */
+/* ---------- Leaflet ---------- */
 .leaflet-container { background: var(--bg); font: inherit; }
 .leaflet-control-attribution {
-  background: rgba(9, 12, 17, 0.7) !important;
+  background: rgba(var(--vg), 0.66) !important;
   color: var(--ink-3) !important;
   backdrop-filter: blur(6px);
   font-size: 10px !important;
 }
 .leaflet-control-attribution a { color: var(--ink-2) !important; }
 .leaflet-control-zoom { display: none; }
-.repair-dot { transition: stroke-width 0.15s var(--ease); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

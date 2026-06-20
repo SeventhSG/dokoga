@@ -1,4 +1,5 @@
-import { Funnel, CaretDown } from "@phosphor-icons/react";
+import { Funnel } from "@phosphor-icons/react";
+import CustomSelect from "./CustomSelect";
 
 interface Props {
   regions: string[];
@@ -9,22 +10,13 @@ interface Props {
 }
 
 export default function RegionFilter({ regions, value, onChange, count, atRiskPct }: Props) {
+  const options = [{ value: "", label: "Цяла България" }, ...regions.map((r) => ({ value: r, label: r }))];
   return (
     <div className="glass panel">
       <h2 className="panel-h">
         <Funnel size={15} weight="bold" /> Област
       </h2>
-      <div className="select-wrap">
-        <select value={value} onChange={(e) => onChange(e.target.value)} aria-label="Избор на област">
-          <option value="">Цяла България</option>
-          {regions.map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
-          ))}
-        </select>
-        <CaretDown className="chev" size={14} weight="bold" />
-      </div>
+      <CustomSelect value={value} options={options} onChange={onChange} ariaLabel="Избор на област" />
       <div className="region-figure">
         <span className="big mono">{count.toLocaleString("bg-BG")}</span>
         <span className="unit">
