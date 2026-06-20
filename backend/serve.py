@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 import agent
 import predictor
+import reports_api
 
 # ---- защита: CORS allowlist (конфигурируем) ----
 ORIGINS = [
@@ -27,7 +28,7 @@ ORIGINS = [
 RATE_N = int(os.environ.get("RATE_LIMIT", "30"))   # заявки
 RATE_WINDOW = 60                                    # секунди
 _hits: dict[str, deque] = defaultdict(deque)
-_GUARDED = {"/chat", "/predict", "/analyze"}
+_GUARDED = {"/chat", "/predict", "/analyze", "/reports"}
 
 app = FastAPI(title="Докога? API", version="0.2")
 app.add_middleware(
@@ -37,11 +38,13 @@ app.add_middleware(
     allow_headers=["Content-Type"],
     max_age=600,
 )
+app.include_router(reports_api.router)
 
 
 @app.middleware("http")
 async def guard(request: Request, call_next):
-    if request.url.path in _GUARDED:
+    p = request.url.path
+    if p in _GUARDED or (p.startswith("/reports/") and p.endswith("/confirm")):
         ip = request.client.host if request.client else "anon"
         now = time.time()
         dq = _hits[ip]

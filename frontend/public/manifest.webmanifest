@@ -1,0 +1,11 @@
+{
+  "name": "Докога? Сигнали",
+  "short_name": "Докога?",
+  "start_url": "/report",
+  "display": "standalone",
+  "background_color": "#020c20",
+  "theme_color": "#020c20",
+  "icons": [
+    { "src": "/dokoga-logo.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
