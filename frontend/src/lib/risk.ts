@@ -18,6 +18,18 @@ export const riskLabel = (r: number) => RISK[riskLevel(r)].label;
 export const bgn = (v: number | null) =>
   v == null ? "няма данни" : new Intl.NumberFormat("bg-BG").format(Math.round(v)) + " лв";
 
+// The model estimates RISK reliably, but NOT an exact number of days (the data
+// has no signal for magnitude). So we never show a single day figure — only a
+// hedged orientation band, clearly labelled.
+export function dayRange(expected: number): [number, number] {
+  const e = Math.max(0, expected);
+  const r10 = (n: number) => Math.max(0, Math.round(n / 10) * 10);
+  return [r10(e * 0.6), r10(e * 1.6)];
+}
+
+export const MODEL_NOTE =
+  "Моделът оценява РИСК от закъснение, не точен брой дни. Диапазонът е груб ориентир по сектора.";
+
 // continuous color ramp for the map (green -> yellow -> orange -> red)
 const STOPS: Array<[number, [number, number, number]]> = [
   [0.0, [31, 209, 122]],

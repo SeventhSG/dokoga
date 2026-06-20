@@ -1,0 +1,26 @@
+{
+ "n": 4470,
+ "n_overrun": 289,
+ "base_rate": 0.06465324384787471,
+ "risk": {
+  "lightgbm": {
+   "roc_auc": 0.6330218511986587,
+   "pr_auc": 0.1373382684151937
+  },
+  "catboost": {
+   "roc_auc": 0.6227910244813206,
+   "pr_auc": 0.13409893331765516
+  },
+  "winner": "lightgbm"
+ },
+ "days": {
+  "lightgbm": {
+   "mae": 124.10393046079012
+  },
+  "catboost": {
+   "mae": 117.15570454990329
+  },
+  "baseline_median": 117.42560553633218,
+  "winner": "catboost"
+ }
+}

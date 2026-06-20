@@ -4,7 +4,7 @@ import CustomSelect from "./CustomSelect";
 import DelayBar from "./DelayBar";
 import { predictRepair } from "../lib/api";
 import type { PredictResult } from "../lib/api";
-import { RISK } from "../lib/risk";
+import { RISK, dayRange, MODEL_NOTE } from "../lib/risk";
 import { shareCard } from "../lib/shareCard";
 
 const REGIONS = [
@@ -103,7 +103,9 @@ export default function Predictor() {
             <div style={{ marginTop: 18 }}>
               <div className="pred-bar-cap">
                 <span>обещан срок</span>
-                <span className="mono" style={{ color: "var(--red)" }}>~{res.expected_days} дни забавяне</span>
+                <span className="mono" style={{ color: "var(--red)" }}>
+                  +{dayRange(res.expected_days)[0]}–{dayRange(res.expected_days)[1]} дни (ориентир)
+                </span>
               </div>
               <DelayBar planned={100} overrun={res.expected_days} height={14} capSize={18} />
             </div>
@@ -121,7 +123,7 @@ export default function Predictor() {
               <ShareNetwork size={16} weight="bold" /> Сподели резултата
             </button>
             <p className="pred-note">
-              Оценка по исторически данни от обществените поръчки. Не е присъда за конкретна фирма.
+              {MODEL_NOTE} Оценка по исторически данни от обществените поръчки; не е присъда за конкретна фирма.
             </p>
           </>
         )}

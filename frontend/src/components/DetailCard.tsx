@@ -2,7 +2,7 @@ import { useState } from "react";
 import { X, MapPin, Sparkle, Path, Tree, Drop, Lightbulb, Buildings } from "@phosphor-icons/react";
 import { AnimatePresence, motion } from "motion/react";
 import DelayBar from "./DelayBar";
-import { riskColor, riskLabel, bgn } from "../lib/risk";
+import { riskColor, riskLabel, bgn, dayRange, MODEL_NOTE } from "../lib/risk";
 import { analyzeProject } from "../lib/api";
 import type { RepairFeature, AnalyzeResponse } from "../lib/types";
 
@@ -15,7 +15,8 @@ export default function DetailCard({ feature, onClose }: { feature: RepairFeatur
   const c = riskColor(p.risk);
   const place = [p.locality, p.region].filter(Boolean).join(", ");
   const SecIcon = SECTOR_ICON[p.sector] ?? Path;
-  const realistic = (p.planned_days || 0) + p.expected_days;
+  const [loDays, hiDays] = dayRange(p.expected_days);
+  const planned = p.planned_days || 0;
 
   const [analysis, setAnalysis] = useState<AnalyzeResponse | null>(null);
   const [busy, setBusy] = useState(false);
@@ -52,23 +53,26 @@ export default function DetailCard({ feature, onClose }: { feature: RepairFeatur
           </div>
         )}
 
-        {/* прогноза: обещано -> реалистично */}
+        {/* прогноза: обещано -> реалистичен диапазон (ориентир, не точно число) */}
         <div className="detail-pred">
           <div className="detail-pred-row">
             <div>
-              <div className="detail-pred-n mono">{p.planned_days || "-"}</div>
+              <div className="detail-pred-n mono">{planned || "-"}</div>
               <div className="detail-pred-l">обещани дни</div>
             </div>
             <div className="detail-pred-arrow">→</div>
             <div>
-              <div className="detail-pred-n mono" style={{ color: c }}>{realistic || "-"}</div>
-              <div className="detail-pred-l">реалистично</div>
+              <div className="detail-pred-n mono" style={{ color: c }}>
+                {planned ? `${planned + loDays}–${planned + hiDays}` : "-"}
+              </div>
+              <div className="detail-pred-l">реалистично (ориентир)</div>
             </div>
           </div>
-          <DelayBar planned={Math.max(p.planned_days, 10)} overrun={p.expected_days} height={12} capSize={16} />
+          <DelayBar planned={Math.max(planned, 10)} overrun={p.expected_days} height={12} capSize={16} />
           <div className="detail-pred-cap mono" style={{ color: "var(--red)" }}>
-            прогнозно +{p.expected_days} дни забавяне
+            обикновено +{loDays}–{hiDays} дни за такива проекти
           </div>
+          <p className="detail-pred-note">{MODEL_NOTE}</p>
         </div>
 
         <div className="rows">

@@ -12,6 +12,9 @@ data/raw/
 *.sqlite
 *.db
 
+# ML training logs
+catboost_info/
+
 # Node / Next.js
 node_modules/
 .next/

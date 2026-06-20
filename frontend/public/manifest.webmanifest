@@ -1,11 +1,20 @@
 {
   "name": "Докога? Сигнали",
   "short_name": "Докога?",
+  "description": "Докладвай дупки, спрели строежи и занемарени обществени ремонти. Свържи проблема с отговорната институция и обществената поръчка.",
+  "lang": "bg",
+  "dir": "ltr",
   "start_url": "/report",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#020c20",
   "theme_color": "#020c20",
+  "orientation": "portrait-primary",
+  "categories": ["news", "government", "utilities"],
   "icons": [
-    { "src": "/dokoga-logo.svg", "sizes": "any", "type": "image/svg+xml" }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
