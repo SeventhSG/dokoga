@@ -44,22 +44,29 @@ export default function MapView({ features, selected, onSelect, theme, focus }: 
   const stroke = theme === "dark" ? "rgba(255,255,255,0.5)" : "rgba(15,23,32,0.4)";
 
   const markers = useMemo(() => {
-    // draw high-risk last so red dots sit on top
-    const sorted = [...features].sort((a, b) => a.properties.risk - b.properties.risk);
+    // draw high-risk last so red dots sit on top; активните - най-отгоре
+    const sorted = [...features].sort((a, b) => {
+      const aa = a.properties.is_active ? 1 : 0;
+      const ba = b.properties.is_active ? 1 : 0;
+      if (aa !== ba) return aa - ba;
+      return a.properties.risk - b.properties.risk;
+    });
     return sorted.map((f) => {
       const [lon, lat] = f.geometry.coordinates;
       const c = riskRamp(f.properties.risk);
       const isSel = selected === f.properties.ocid;
+      const isActive = !!f.properties.is_active;
+      const ring = isSel ? (theme === "dark" ? "#fff" : "#0f1720") : isActive ? "#22d3ee" : stroke;
       return (
         <CircleMarker
           key={f.properties.ocid}
           center={[lat, lon]}
-          radius={radiusFor(f.properties.value) + (isSel ? 3 : 0)}
+          radius={radiusFor(f.properties.value) + (isSel ? 3 : 0) + (isActive ? 2 : 0)}
           pathOptions={{
-            color: isSel ? (theme === "dark" ? "#fff" : "#0f1720") : stroke,
+            color: ring,
             fillColor: c,
             fillOpacity: 0.85,
-            weight: isSel ? 2.5 : 0.7,
+            weight: isSel ? 2.5 : isActive ? 2.2 : 0.7,
             opacity: 1,
           }}
           eventHandlers={{ click: () => onSelect(f) }}

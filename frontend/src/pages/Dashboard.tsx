@@ -37,6 +37,7 @@ export default function Dashboard() {
   const [all, setAll] = useState<RepairFeature[]>([]);
   const [region, setRegion] = useState("");
   const [sector, setSector] = useState("");
+  const [activeOnly, setActiveOnly] = useState(false);
   const [selected, setSelected] = useState<RepairFeature | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [focus, setFocus] = useState<FocusTarget | null>(null);
@@ -60,10 +61,14 @@ export default function Dashboard() {
   const features = useMemo(
     () =>
       all.filter(
-        (f) => (!region || f.properties.region === region) && (!sector || f.properties.sector === sector)
+        (f) =>
+          (!region || f.properties.region === region) &&
+          (!sector || f.properties.sector === sector) &&
+          (!activeOnly || !!f.properties.is_active)
       ),
-    [all, region, sector]
+    [all, region, sector, activeOnly]
   );
+  const activeCount = useMemo(() => all.filter((f) => f.properties.is_active).length, [all]);
   const sectorCounts = useMemo(() => {
     const base = region ? all.filter((f) => f.properties.region === region) : all;
     const c: Record<string, number> = { __all: base.length };
@@ -122,7 +127,27 @@ export default function Dashboard() {
           <motion.div {...rail(2)} style={{ position: "relative", zIndex: 20 }}>
             <SectorFilter value={sector} onChange={setSector} counts={sectorCounts} />
           </motion.div>
-          <motion.div {...rail(3)} style={{ position: "relative", zIndex: 10 }}>
+          {activeCount > 0 && (
+            <motion.div {...rail(3)} style={{ position: "relative", zIndex: 15 }}>
+              <div className="glass panel">
+                <h2 className="panel-h">Текущи поръчки</h2>
+                <button
+                  className={`sector-pill${activeOnly ? " on" : ""}`}
+                  onClick={() => setActiveOnly((v) => !v)}
+                  aria-pressed={activeOnly}
+                  style={activeOnly ? { borderColor: "#22d3ee", color: "#22d3ee" } : undefined}
+                >
+                  <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#22d3ee" }} />
+                  Само активни поръчки
+                  <span className="sector-pill-n mono">{activeCount}</span>
+                </button>
+                <p style={{ margin: "10px 0 0", fontSize: 11, color: "var(--ink-3)", lineHeight: 1.45 }}>
+                  Активни процедури от ЦАИС ЕОП, които в момента приемат оферти (Стара Загора).
+                </p>
+              </div>
+            </motion.div>
+          )}
+          <motion.div {...rail(4)} style={{ position: "relative", zIndex: 10 }}>
             <Legend />
           </motion.div>
         </div>

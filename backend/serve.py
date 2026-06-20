@@ -7,9 +7,12 @@ import time
 from collections import defaultdict, deque
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+
+FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"))
 
 import agent
 import predictor
@@ -132,3 +135,15 @@ def analyze(inp: AnalyzeIn):
         return agent.analyze(facts)
     except Exception:
         return {"analysis": "AI анализът не успя. Опитай пак.", "drivers": []}
+
+# SPA fallback — serve index.html for client-side routes (added by Hermes)
+@app.middleware('http')
+async def spa_middleware(request, call_next):
+    response = await call_next(request)
+    if response.status_code == 404 and not request.url.path.startswith('/api'):
+        return FileResponse(os.path.join(FRONTEND_DIR, 'index.html'))
+    return response
+
+# Mount static files at the end so it serves assets, maps, and HTML
+if os.path.exists(FRONTEND_DIR):
+    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="static")

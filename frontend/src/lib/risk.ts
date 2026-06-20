@@ -30,6 +30,22 @@ export function dayRange(expected: number): [number, number] {
 export const MODEL_NOTE =
   "Моделът оценява РИСК от закъснение, не точен брой дни. Диапазонът е груб ориентир по сектора.";
 
+// стойност с валута (активните поръчки за 2026 са в EUR)
+export const money = (v: number | null, currency?: string | null) => {
+  if (v == null) return "няма данни";
+  const num = new Intl.NumberFormat("bg-BG").format(Math.round(v));
+  const cur = currency === "EUR" ? "€" : "лв";
+  return `${num} ${cur}`;
+};
+
+// дни до краен срок (>=0) или null ако е минал/липсва
+export function daysLeft(deadlineISO?: string | null): number | null {
+  if (!deadlineISO) return null;
+  const d = new Date(deadlineISO).getTime();
+  if (isNaN(d)) return null;
+  return Math.ceil((d - Date.now()) / 86400000);
+}
+
 // continuous color ramp for the map (green -> yellow -> orange -> red)
 const STOPS: Array<[number, [number, number, number]]> = [
   [0.0, [31, 209, 122]],

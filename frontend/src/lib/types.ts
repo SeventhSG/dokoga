@@ -13,6 +13,18 @@ export interface RepairProps {
   expected_days: number;
   overrun_days: number;
   is_repair: number;
+  // --- активни обществени поръчки (от ЦАИС ЕОП), по избор ---
+  is_active?: number;
+  regnum?: string;
+  deadline?: string | null;
+  deadline_raw?: string | null;
+  procedure?: string | null;
+  object_type?: string | null;
+  n_documents?: number;
+  documents?: { filename: string | null; url: string | null }[];
+  value_currency?: string | null;
+  eop_url?: string | null;
+  risk_basis?: string | null;
 }
 
 export interface AnalyzeResponse {

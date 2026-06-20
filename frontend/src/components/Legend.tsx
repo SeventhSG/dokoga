@@ -17,6 +17,10 @@ export default function Legend() {
           <span className="dot" style={{ background: RISK.low.color, color: RISK.low.color }} />
           <b>Нисък</b> · вероятно в срок
         </div>
+        <div className="legend-row">
+          <span className="dot" style={{ background: "transparent", border: "2px solid #22d3ee" }} />
+          <b>Активна</b> · поръчка, приемаща оферти
+        </div>
       </div>
       <p style={{ margin: "12px 0 0", fontSize: 11, color: "var(--ink-3)", lineHeight: 1.45 }}>
         Размерът на точката е по стойността на договора. Рискът е оценка по исторически данни, не присъда.

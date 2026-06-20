@@ -63,7 +63,34 @@ df["expected_days"] = np.clip(np.round(0.7 * pred_days + 0.3 * floor), 7, 900).a
 df["region"] = df["region"].astype(str)
 df["region_name"] = df["region"].map(lambda r: NUTS.get(r, ("-", None, None))[0])
 
-def coords(ocid, region):
+# Load geocoding cache if available
+CACHE_FILE = os.path.join(PROC, "geocoding_cache.json")
+GEO_CACHE = {}
+if os.path.exists(CACHE_FILE):
+    try:
+        with open(CACHE_FILE, "r", encoding="utf-8") as f:
+            GEO_CACHE = json.load(f)
+    except Exception:
+        pass
+
+def normalize_locality(s):
+    import re
+    if not isinstance(s, str):
+        return ""
+    s = s.strip()
+    s = re.sub(r"^(гр\.\s*|с\.\s*|град\s+|село\s+|община\s+|общ\.\s*)", "", s, flags=re.IGNORECASE)
+    return s.strip()
+
+def coords(ocid, region, locality=None):
+    norm_loc = normalize_locality(locality)
+    if norm_loc and norm_loc in GEO_CACHE:
+        lat, lon = GEO_CACHE[norm_loc]
+        # Extremely small jitter within the town/village so pins don't stack perfectly
+        h = int(hashlib.md5(str(ocid).encode()).hexdigest(), 16)
+        jx = ((h % 1000) / 1000 - 0.5) * 0.006
+        jy = (((h // 1000) % 1000) / 1000 - 0.5) * 0.006
+        return lat + jy, lon + jx
+
     name, lat, lon = NUTS.get(region, ("-", 42.73, 25.48))  # център на БГ при липса
     h = int(hashlib.md5(str(ocid).encode()).hexdigest(), 16)
     jx = ((h % 1000) / 1000 - 0.5) * 0.25
@@ -102,11 +129,11 @@ con.execute("CREATE INDEX i_reg ON contracts(region)")
 con.execute("CREATE INDEX i_sup ON contracts(supplier_eik)")
 con.commit(); con.close()
 
-# ---------- GeoJSON (само обществено-значими сектори за картата) ----------
-mp = df[df["sector"] != "other"].copy()
+# ---------- GeoJSON (само обществено-значими строителни дейности за картата) ----------
+mp = df[(df["sector"] != "other") & (df["category"] == "works")].copy()
 feats = []
 for _, r in mp.iterrows():
-    lat, lon = coords(r["ocid"], r["region"])
+    lat, lon = coords(r["ocid"], r["region"], r.get("locality"))
     feats.append({"type":"Feature","geometry":{"type":"Point","coordinates":[round(lon,5),round(lat,5)]},
         "properties":{"ocid":r["ocid"],"title":r["title"],"value":None if pd.isna(r["value"]) else int(r["value"]),
             "region":r["region_name"],"locality":None if pd.isna(r["locality"]) else r["locality"],

@@ -25,6 +25,7 @@ def send_code(email: str, code: str) -> bool:
                 f"<p>Валиден е 10 минути. Ако не си го поискал, игнорирай това писмо.</p>",
     }).encode("utf-8")
     req = urllib.request.Request(API, data=body, method="POST", headers={
-        "Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+        "Authorization": f"Bearer {key}", "Content-Type": "application/json",
+        "User-Agent": "dokoga/1.0"})
     with urllib.request.urlopen(req, timeout=15) as r:
         return 200 <= r.status < 300
