@@ -74,6 +74,43 @@ def answer(question: str) -> dict:
     text = generate(NARRATE.format(q=question, data=json.dumps(data, ensure_ascii=False, indent=1)))
     return {"answer": text, "tool": tool, "arg": arg, "data": data}
 
+
+ANALYZE = """Ти си анализатор на „Докога?" — обясняваш ЗАЩО конкретен обществен ремонт
+рискува да се проточи. Пиши на български, 3-5 изречения, конкретно и леко директно.
+Ползвай САМО числата по-долу — НЕ измисляй. Свържи факторите в кратък разказ:
+започни с присъдата (риск + очаквано забавяне), после обясни кои фактори тежат и
+какво показва историята на областта/изпълнителя. Накрая едно изречение какво да
+следи гражданинът. Без обвинения в измама — това е оценка по история.
+
+ПРОЕКТ (проверени данни):
+{facts}
+
+Анализ:"""
+
+
+def analyze(facts: dict) -> dict:
+    """Граундиран LLM анализ за конкретен проект от картата."""
+    region = facts.get("region") or ""
+    supplier = facts.get("supplier") or ""
+    reg = tools.get_region_stats(region) if region and region != "—" else {"found": False}
+    con = tools.get_contractor_stats(supplier) if supplier else {"found": False}
+    payload = {
+        "заглавие": facts.get("title"),
+        "сектор": facts.get("sector_name") or facts.get("sector"),
+        "област": region,
+        "стойност_лв": facts.get("value"),
+        "обещан_срок_дни": facts.get("planned_days"),
+        "риск_процент": round(float(facts.get("risk", 0)) * 100),
+        "очаквано_забавяне_дни": facts.get("expected_days"),
+        "рискови_фактори": facts.get("drivers", []),
+        "статистика_област": reg,
+        "история_изпълнител": con if con.get("found") else "няма данни за изпълнителя",
+    }
+    text = generate(ANALYZE.format(facts=json.dumps(payload, ensure_ascii=False, indent=1)), temperature=0.3)
+    text = re.sub(r"^\s*Анализ\s*:?\s*", "", text).strip()
+    return {"analysis": text, "drivers": facts.get("drivers", []),
+            "region_stats": reg, "contractor_stats": con}
+
 if __name__ == "__main__":
     q = " ".join(sys.argv[1:]) or "Кои са най-просрочващите изпълнители?"
     out = answer(q)

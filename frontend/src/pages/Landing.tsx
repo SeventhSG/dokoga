@@ -9,8 +9,16 @@ import { useTheme } from "../theme";
 import ThemeToggle from "../components/ThemeToggle";
 import DelayBar from "../components/DelayBar";
 import Predictor from "../components/Predictor";
+import CountUp from "../components/CountUp";
 
 const EASE = [0.16, 1, 0.3, 1] as [number, number, number, number];
+const LIFT = { whileHover: { y: -4 }, transition: { duration: 0.25, ease: EASE } };
+
+const STATS = [
+  { node: <CountUp to={25980} />, l: "договора анализирани" },
+  { node: <CountUp to={6.5} decimals={1} suffix="%" />, l: "се проточват над срока" },
+  { node: <CountUp to={827} prefix="до +" />, l: "дни забавяне" },
+];
 
 const STEPS = [
   { icon: Database, t: "Събираме данните", d: "25 980 договора за обществени поръчки от ЦАИС ЕОП (data.egov.bg), по стандарт OCDS." },
@@ -120,14 +128,10 @@ export default function Landing() {
       </header>
 
       <section className="lp-stats">
-        {[
-          ["25 980", "договора анализирани"],
-          ["6.5%", "се проточват над срока"],
-          ["до +827", "дни забавяне"],
-        ].map(([n, l], i) => (
-          <motion.div className="lp-stat" key={l} {...fade(i * 0.08)}>
-            <div className="lp-stat-n display mono">{n}</div>
-            <div className="lp-stat-l">{l}</div>
+        {STATS.map((s, i) => (
+          <motion.div className="lp-stat" key={s.l} {...fade(i * 0.08)}>
+            <div className="lp-stat-n display mono">{s.node}</div>
+            <div className="lp-stat-l">{s.l}</div>
           </motion.div>
         ))}
       </section>
@@ -138,7 +142,7 @@ export default function Landing() {
         </motion.h2>
         <div className="lp-steps-grid">
           {STEPS.map((s, i) => (
-            <motion.div className="lp-step" key={s.t} {...fade(i * 0.1)}>
+            <motion.div className="lp-step" key={s.t} {...fade(i * 0.1)} {...(reduce ? {} : LIFT)}>
               <span className="lp-step-no mono">0{i + 1}</span>
               <s.icon size={26} weight="duotone" className="lp-step-ic" />
               <h3>{s.t}</h3>
@@ -155,7 +159,7 @@ export default function Landing() {
         </motion.div>
         <div className="lp-trust-grid">
           {AI.map((c, i) => (
-            <motion.div className="lp-trust-card glass" key={c.t} {...fade(i * 0.08)}>
+            <motion.div className="lp-trust-card glass" key={c.t} {...fade(i * 0.08)} {...(reduce ? {} : LIFT)}>
               <c.icon size={26} weight="duotone" className="lp-trust-ic" />
               <h3>{c.t}</h3>
               <p>{c.d}</p>
@@ -197,7 +201,7 @@ export default function Landing() {
         </motion.div>
         <div className="lp-next-grid">
           {NEXT.map((n, i) => (
-            <motion.div className="lp-next-card" key={n.t} {...fade(i * 0.08)}>
+            <motion.div className="lp-next-card" key={n.t} {...fade(i * 0.08)} {...(reduce ? {} : LIFT)}>
               <n.icon size={24} weight="duotone" className="lp-next-ic" />
               <div>
                 <h3>{n.t}</h3>

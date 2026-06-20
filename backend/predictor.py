@@ -8,9 +8,12 @@ import lightgbm as lgb
 
 HERE = os.path.dirname(__file__)
 MODEL = os.path.join(HERE, "..", "models", "risk.txt")
+DAYS_MODEL = os.path.join(HERE, "..", "models", "days.txt")
 DATA = os.path.join(HERE, "..", "data", "processed", "all_contracts.csv")
 
-FEATS = ["category", "log_value", "region", "start_month", "planned_days", "is_repair", "n_tenderers"]
+FEATS = ["category", "sector", "log_value", "value_per_day", "region",
+         "start_month", "planned_days", "is_repair", "n_tenderers"]
+SECTORS = ["roads", "water", "parks", "lighting", "public", "other"]
 
 # име на област -> NUTS код (както в експорта)
 NAME2CODE = {
@@ -23,30 +26,63 @@ NAME2CODE = {
 }
 
 _booster = lgb.Booster(model_file=MODEL)
+_days = lgb.Booster(model_file=DAYS_MODEL)
 _df = pd.read_csv(DATA)
 _df = _df[_df["value"].notna() & (_df["value"] > 0)]
+if "sector" not in _df.columns:
+    _df["sector"] = "other"
 # същите категории/подредба като при трениране
 CATS = {c: pd.CategoricalDtype(categories=sorted(_df[c].fillna("NA").astype(str).unique())) for c in ["category", "region"]}
+CATS["sector"] = pd.CategoricalDtype(categories=SECTORS)
 _pos = _df[_df["overrun_days"] > 0]
-MED = {k: int(v) for k, v in _pos.groupby("category")["overrun_days"].median().items()}
+MED = {k: int(v) for k, v in _pos.groupby("sector")["overrun_days"].median().items()}
 OVERALL = int(_pos["overrun_days"].median())
 
 
 def predict(d: dict) -> dict:
     region = NAME2CODE.get(str(d.get("region", "")), str(d.get("region", "NA")))
+    value = float(d.get("value", 0) or 0)
+    planned = max(1, int(d.get("planned_days", 120)))
+    sector = str(d.get("sector", "roads"))
+    if sector not in SECTORS:
+        sector = "other"
     row = pd.DataFrame([{
         "category": str(d.get("category", "works")),
-        "log_value": np.log1p(float(d.get("value", 0) or 0)),
+        "sector": sector,
+        "log_value": np.log1p(value),
+        "value_per_day": np.log1p(value / planned),
         "region": region,
         "start_month": int(d.get("month", 6)),
-        "planned_days": int(d.get("planned_days", 120)),
+        "planned_days": planned,
         "is_repair": int(d.get("is_repair", 1)),
         "n_tenderers": float(d.get("n_tenderers", 1)),
     }])
-    for c in ("category", "region"):
+    for c in ("category", "region", "sector"):
         row[c] = row[c].astype(CATS[c])
     p = float(_booster.predict(row[FEATS])[0])
     p = max(0.0, min(1.0, p))
     level = "high" if p >= 0.6 else "med" if p >= 0.33 else "low"
-    exp = MED.get(str(d.get("category", "works")), OVERALL)
-    return {"risk": round(p, 3), "level": level, "expected_days": exp}
+    # очаквани дни от регресора (варира), blend с медианата по сектор за пол
+    pred = float(np.expm1(_days.predict(row[FEATS])[0]))
+    floor = MED.get(sector, OVERALL)
+    exp = int(max(7, min(900, round(0.7 * pred + 0.3 * floor))))
+    return {"risk": round(p, 3), "level": level, "expected_days": exp,
+            "drivers": _drivers(value, planned, sector, int(d.get("month", 6)), float(d.get("n_tenderers", 1)))}
+
+
+def _drivers(value, planned, sector, month, ntend):
+    """Кратки човешки обяснения кои фактори тежат — за AI анализа/UI."""
+    out = []
+    if value >= 500000:
+        out.append("висока стойност (по-големите договори се удължават по-често)")
+    if planned <= 60:
+        out.append("кратък обещан срок (амбициозни срокове трудно се спазват)")
+    elif planned >= 365:
+        out.append("дълъг срок (повече време за непредвидени пречки)")
+    if month in (11, 12, 1, 2):
+        out.append("зимен старт (метеорологичните пречки бавят строежа)")
+    if ntend <= 1:
+        out.append("слаба конкуренция (1 оферта → по-малък натиск за срочност)")
+    if sector in ("roads", "water"):
+        out.append("инфраструктурен сектор (зависим от подземни/външни условия)")
+    return out[:4]

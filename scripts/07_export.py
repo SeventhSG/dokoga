@@ -5,6 +5,8 @@
 import os, sys, json, sqlite3, hashlib
 import numpy as np, pandas as pd, lightgbm as lgb
 sys.stdout.reconfigure(encoding="utf-8")
+sys.path.insert(0, os.path.dirname(__file__))
+from sectors import SECTORS
 
 HERE = os.path.dirname(__file__)
 PROC = os.path.join(HERE, "..", "data", "processed")
@@ -27,12 +29,19 @@ NUTS = {
 df = pd.read_csv(os.path.join(PROC, "all_contracts.csv"))
 df = df[df["value"].notna() & (df["value"] > 0)].copy()
 df["log_value"] = np.log1p(df["value"])
+df["planned_days"] = df["planned_days"].clip(lower=1)
+df["value_per_day"] = np.log1p(df["value"] / df["planned_days"])
 df["region"] = df["region"].fillna("NA")
 df["category"] = df["category"].fillna("NA")
-for c in ["category", "region"]:
+if "sector" not in df.columns:
+    df["sector"] = "other"
+df["sector"] = df["sector"].fillna("other")
+df["sector_name"] = df["sector"].map(lambda s: SECTORS.get(s, SECTORS["other"]))
+for c in ["category", "region", "sector"]:
     df[c] = df[c].astype("category")
 df["n_tenderers"] = pd.to_numeric(df["n_tenderers"], errors="coerce")
-FEATS = ["category", "log_value", "region", "start_month", "planned_days", "is_repair", "n_tenderers"]
+FEATS = ["category", "sector", "log_value", "value_per_day", "region",
+         "start_month", "planned_days", "is_repair", "n_tenderers"]
 
 # риск (рефит върху всички + предсказание за показване)
 clf = lgb.LGBMClassifier(n_estimators=300, learning_rate=0.03, num_leaves=31, subsample=0.8,
@@ -41,11 +50,15 @@ clf = lgb.LGBMClassifier(n_estimators=300, learning_rate=0.03, num_leaves=31, su
 clf.fit(df[FEATS], (df["overrun_days"] > 0).astype(int))
 df["risk"] = clf.predict_proba(df[FEATS])[:, 1].round(3)
 
-# очаквани дни = историческа медиана по категория (модел не бие baseline -> честно)
+# очаквани дни = регресорът (models/days.txt), варира по стойност/срок/регион/сезон.
+# По-надежден от константна медиана, blend-нат с медианата по сектор за пол.
 pos = df[df["overrun_days"] > 0]
-med_by_cat = pos.groupby("category", observed=True)["overrun_days"].median().to_dict()
+med_by_sector = pos.groupby("sector", observed=True)["overrun_days"].median().to_dict()
 overall_med = int(pos["overrun_days"].median())
-df["expected_days"] = df["category"].map(lambda c: int(med_by_cat.get(c, overall_med)))
+_days = lgb.Booster(model_file=os.path.join(HERE, "..", "models", "days.txt"))
+pred_days = np.expm1(_days.predict(df[FEATS]))
+floor = df["sector"].map(lambda s: med_by_sector.get(s, overall_med)).astype(float).values
+df["expected_days"] = np.clip(np.round(0.7 * pred_days + 0.3 * floor), 7, 900).astype(int)
 
 df["region"] = df["region"].astype(str)
 df["region_name"] = df["region"].map(lambda r: NUTS.get(r, ("—", None, None))[0])
@@ -61,7 +74,8 @@ def coords(ocid, region):
 db = os.path.join(APP, "projects.sqlite")
 if os.path.exists(db): os.remove(db)
 con = sqlite3.connect(db)
-cols = ["ocid","title","category","is_repair","value","region","region_name","locality",
+df["sector"] = df["sector"].astype(str)
+cols = ["ocid","title","category","sector","sector_name","is_repair","value","region","region_name","locality",
         "buyer","supplier","supplier_eik","planned_days","start_month","overrun_days",
         "risk","expected_days"]
 df[cols].to_sql("contracts", con, index=False)
@@ -88,8 +102,8 @@ con.execute("CREATE INDEX i_reg ON contracts(region)")
 con.execute("CREATE INDEX i_sup ON contracts(supplier_eik)")
 con.commit(); con.close()
 
-# ---------- GeoJSON (works + ремонти за картата) ----------
-mp = df[(df["category"]=="works") | (df["is_repair"]==1)].copy()
+# ---------- GeoJSON (само обществено-значими сектори за картата) ----------
+mp = df[df["sector"] != "other"].copy()
 feats = []
 for _, r in mp.iterrows():
     lat, lon = coords(r["ocid"], r["region"])
@@ -97,6 +111,8 @@ for _, r in mp.iterrows():
         "properties":{"ocid":r["ocid"],"title":r["title"],"value":None if pd.isna(r["value"]) else int(r["value"]),
             "region":r["region_name"],"locality":None if pd.isna(r["locality"]) else r["locality"],
             "buyer":None if pd.isna(r["buyer"]) else r["buyer"],"supplier":None if pd.isna(r["supplier"]) else r["supplier"],
+            "sector":r["sector"],"sector_name":r["sector_name"],
+            "planned_days":int(r["planned_days"]),"value_num":None if pd.isna(r["value"]) else int(r["value"]),
             "risk":float(r["risk"]),"expected_days":int(r["expected_days"]),
             "overrun_days":int(r["overrun_days"]),"is_repair":int(r["is_repair"])}})
 geo = {"type":"FeatureCollection","features":feats}

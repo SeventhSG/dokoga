@@ -6,6 +6,8 @@ import io, os, sys, re, json, time, zipfile, urllib.request
 from datetime import datetime, timezone
 from collections import defaultdict
 sys.stdout.reconfigure(encoding="utf-8")
+sys.path.insert(0, os.path.dirname(__file__))
+from sectors import classify, SECTORS
 
 HERE = os.path.dirname(__file__)
 RAW = os.path.join(HERE, "..", "data", "raw")
@@ -110,6 +112,7 @@ for ocid, rels in by_ocid.items():
     sup_eik, sup_name = supplier_eik(rels)
     rows.append({
         "ocid": ocid, "category": cat, "is_repair": int(bool(REPAIR.search(title))),
+        "sector": classify(title),
         "title": title[:120].replace("\n", " "),
         "value": value, "region": region, "locality": locality, "street": street,
         "buyer": buyer, "supplier_eik": sup_eik, "supplier": sup_name,
@@ -142,4 +145,11 @@ def stats(name, R):
 
 stats("ВСИЧКИ", rows)
 stats("WORKS (строителство)", works)
+
+pub = [r for r in rows if r["sector"] != "other"]
+print(f"\n[ОБЩЕСТВЕНО-ЗНАЧИМИ] (за картата): {len(pub)} / {len(rows)}")
+from collections import Counter as _C
+sc = _C(r["sector"] for r in rows)
+for k in ["roads", "water", "parks", "lighting", "public"]:
+    print(f"  {SECTORS[k]:32} {sc[k]}")
 print("\nизход -> data/processed/works.csv  &  all_contracts.csv")

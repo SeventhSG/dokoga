@@ -9,6 +9,7 @@ import { useTheme } from "../theme";
 import MapView from "../components/MapView";
 import Brand from "../components/Brand";
 import RegionFilter from "../components/RegionFilter";
+import SectorFilter from "../components/SectorFilter";
 import Legend from "../components/Legend";
 import DetailCard from "../components/DetailCard";
 import ChatDock from "../components/ChatDock";
@@ -21,6 +22,7 @@ export default function Dashboard() {
   const { theme, toggle } = useTheme();
   const [all, setAll] = useState<RepairFeature[]>([]);
   const [region, setRegion] = useState("");
+  const [sector, setSector] = useState("");
   const [selected, setSelected] = useState<RepairFeature | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const reduce = useReducedMotion();
@@ -38,7 +40,19 @@ export default function Dashboard() {
       ),
     [all]
   );
-  const features = useMemo(() => (region ? all.filter((f) => f.properties.region === region) : all), [all, region]);
+  const features = useMemo(
+    () =>
+      all.filter(
+        (f) => (!region || f.properties.region === region) && (!sector || f.properties.sector === sector)
+      ),
+    [all, region, sector]
+  );
+  const sectorCounts = useMemo(() => {
+    const base = region ? all.filter((f) => f.properties.region === region) : all;
+    const c: Record<string, number> = { __all: base.length };
+    for (const f of base) c[f.properties.sector] = (c[f.properties.sector] ?? 0) + 1;
+    return c;
+  }, [all, region]);
   const nationalHigh = useMemo(() => all.filter(isHigh).length, [all]);
   const viewHigh = useMemo(() => features.filter(isHigh).length, [features]);
   const atRiskPct = features.length ? Math.round((viewHigh / features.length) * 100) : 0;
@@ -59,6 +73,9 @@ export default function Dashboard() {
             <RegionFilter regions={regions} value={region} onChange={setRegion} count={features.length} atRiskPct={atRiskPct} />
           </motion.div>
           <motion.div {...rail(2)}>
+            <SectorFilter value={sector} onChange={setSector} counts={sectorCounts} />
+          </motion.div>
+          <motion.div {...rail(3)}>
             <Legend />
           </motion.div>
         </div>

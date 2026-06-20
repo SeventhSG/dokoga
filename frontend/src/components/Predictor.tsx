@@ -13,16 +13,18 @@ const REGIONS = [
   "Разград", "Русе", "Силистра", "Сливен", "Смолян", "София (столица)", "София област",
   "Стара Загора", "Търговище", "Хасково", "Шумен", "Ямбол",
 ];
-const CATS = [
-  { value: "works", label: "Строителство / ремонт" },
-  { value: "services", label: "Услуги" },
-  { value: "goods", label: "Доставки" },
+const SECTORS = [
+  { value: "roads", label: "Пътища и тротоари" },
+  { value: "water", label: "ВиК" },
+  { value: "parks", label: "Паркове и площадки" },
+  { value: "lighting", label: "Улично осветление" },
+  { value: "public", label: "Обществени сгради/площади" },
 ];
 const MONTHS = ["Януари", "Февруари", "Март", "Април", "Май", "Юни", "Юли", "Август", "Септември", "Октомври", "Ноември", "Декември"];
 const LABELS = { low: "Нисък", med: "Среден", high: "Висок" } as const;
 
 export default function Predictor() {
-  const [form, setForm] = useState({ category: "works", region: "София (столица)", value: 250000, planned_days: 120, n_tenderers: 1, month: 6 });
+  const [form, setForm] = useState({ category: "works", sector: "roads", region: "София (столица)", value: 250000, planned_days: 120, n_tenderers: 1, month: 6 });
   const [res, setRes] = useState<PredictResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(false);
@@ -33,7 +35,7 @@ export default function Predictor() {
     setBusy(true);
     setErr(false);
     try {
-      const r = await predictRepair({ ...form, is_repair: form.category === "works" ? 1 : 0 });
+      const r = await predictRepair({ ...form, is_repair: 1 });
       if (r.error) setErr(true);
       else setRes(r);
     } catch {
@@ -49,7 +51,7 @@ export default function Predictor() {
     if (!res) return;
     await shareCard({
       region: form.region,
-      category: CATS.find((c) => c.value === form.category)?.label ?? form.category,
+      category: SECTORS.find((c) => c.value === form.sector)?.label ?? "Ремонт",
       riskPct: Math.round(res.risk * 100),
       level: res.level,
       expectedDays: res.expected_days,
@@ -61,8 +63,8 @@ export default function Predictor() {
     <div className="predictor">
       <div className="pred-form">
         <label className="lbl">
-          Тип дейност
-          <CustomSelect value={form.category} options={CATS} onChange={(v) => set("category", v)} ariaLabel="Тип дейност" />
+          Вид ремонт
+          <CustomSelect value={form.sector} options={SECTORS} onChange={(v) => set("sector", v)} ariaLabel="Вид ремонт" />
         </label>
         <label className="lbl">
           Област
@@ -105,6 +107,16 @@ export default function Predictor() {
               </div>
               <DelayBar planned={100} overrun={res.expected_days} height={14} capSize={18} />
             </div>
+            {res.drivers && res.drivers.length > 0 && (
+              <div className="pred-drivers">
+                <div className="pred-drivers-h">Защо този риск:</div>
+                <div className="pred-drivers-list">
+                  {res.drivers.map((d, i) => (
+                    <span className="driver-chip" key={i}>{d}</span>
+                  ))}
+                </div>
+              </div>
+            )}
             <button className="btn pred-share" onClick={share}>
               <ShareNetwork size={16} weight="bold" /> Сподели резултата
             </button>

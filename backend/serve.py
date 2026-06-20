@@ -27,7 +27,7 @@ ORIGINS = [
 RATE_N = int(os.environ.get("RATE_LIMIT", "30"))   # заявки
 RATE_WINDOW = 60                                    # секунди
 _hits: dict[str, deque] = defaultdict(deque)
-_GUARDED = {"/chat", "/predict"}
+_GUARDED = {"/chat", "/predict", "/analyze"}
 
 app = FastAPI(title="Докога? API", version="0.2")
 app.add_middleware(
@@ -69,12 +69,27 @@ class ChatIn(BaseModel):
 
 class PredictIn(BaseModel):
     category: str = Field(default="works", max_length=20)
+    sector: str = Field(default="roads", max_length=20)
     value: float = Field(default=150000, ge=0, le=1e9)
     region: str = Field(default="София (столица)", max_length=40)
     month: int = Field(default=6, ge=1, le=12)
     planned_days: int = Field(default=120, ge=1, le=2000)
     n_tenderers: int = Field(default=1, ge=0, le=200)
     is_repair: int = Field(default=1, ge=0, le=1)
+
+
+class AnalyzeIn(BaseModel):
+    ocid: str = Field(default="", max_length=80)
+    title: str = Field(default="", max_length=240)
+    sector: str = Field(default="roads", max_length=20)
+    sector_name: str = Field(default="", max_length=60)
+    region: str = Field(default="", max_length=40)
+    value: float = Field(default=0, ge=0, le=1e9)
+    planned_days: int = Field(default=120, ge=1, le=2000)
+    supplier: str = Field(default="", max_length=160)
+    buyer: str = Field(default="", max_length=160)
+    risk: float = Field(default=0, ge=0, le=1)
+    expected_days: int = Field(default=0, ge=0, le=2000)
 
 
 @app.get("/health")
@@ -96,3 +111,20 @@ def predict(inp: PredictIn):
         return predictor.predict(inp.model_dump())
     except Exception:
         return {"error": "Прогнозата не успя."}
+
+
+@app.post("/analyze")
+def analyze(inp: AnalyzeIn):
+    facts = inp.model_dump()
+    facts["title"] = _clean(facts.get("title", ""))
+    try:
+        # драйверите идват от модела — за конкретния сектор/стойност/срок
+        drivers = predictor.predict({
+            "category": "works", "sector": facts["sector"], "value": facts["value"],
+            "region": facts["region"], "month": 6, "planned_days": facts["planned_days"],
+            "n_tenderers": 1, "is_repair": 1,
+        }).get("drivers", [])
+        facts["drivers"] = drivers
+        return agent.analyze(facts)
+    except Exception:
+        return {"analysis": "AI анализът не успя. Опитай пак.", "drivers": []}

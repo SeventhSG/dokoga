@@ -16,10 +16,15 @@ MODELS = os.path.join(HERE, "..", "models"); os.makedirs(MODELS, exist_ok=True)
 df = pd.read_csv(os.path.join(PROC, "all_contracts.csv"))
 df = df[df["value"].notna() & (df["value"] > 0)].copy()
 df["log_value"] = np.log1p(df["value"])
-for c in ["category", "region"]:
+df["planned_days"] = df["planned_days"].clip(lower=1)
+df["value_per_day"] = np.log1p(df["value"] / df["planned_days"])  # интензитет на разхода
+if "sector" not in df.columns:
+    df["sector"] = "other"
+for c in ["category", "region", "sector"]:
     df[c] = df[c].fillna("NA").astype("category")
 df["n_tenderers"] = pd.to_numeric(df["n_tenderers"], errors="coerce")
-FEATS = ["category", "log_value", "region", "start_month", "planned_days", "is_repair", "n_tenderers"]
+FEATS = ["category", "sector", "log_value", "value_per_day", "region",
+         "start_month", "planned_days", "is_repair", "n_tenderers"]
 X = df[FEATS]
 y_clf = (df["overrun_days"] > 0).astype(int)
 

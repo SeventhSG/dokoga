@@ -6,10 +6,20 @@ export interface RepairProps {
   locality: string | null;
   buyer: string | null;
   supplier: string | null;
+  sector: string;
+  sector_name: string;
+  planned_days: number;
   risk: number;
   expected_days: number;
   overrun_days: number;
   is_repair: number;
+}
+
+export interface AnalyzeResponse {
+  analysis: string;
+  drivers: string[];
+  region_stats?: { found?: boolean; дял_просрочка?: number; договори?: number };
+  contractor_stats?: { found?: boolean };
 }
 
 export interface RepairFeature {
