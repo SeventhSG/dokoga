@@ -1,6 +1,6 @@
 """Експорт за приложението:
-  data/app/projects.sqlite  — договори + риск + статистики (за LLM tool функции)
-  data/app/projects.geojson — точки за картата (по център на областта + jitter)
+  data/app/projects.sqlite  - договори + риск + статистики (за LLM tool функции)
+  data/app/projects.geojson - точки за картата (по център на областта + jitter)
 """
 import os, sys, json, sqlite3, hashlib
 import numpy as np, pandas as pd, lightgbm as lgb
@@ -61,10 +61,10 @@ floor = df["sector"].map(lambda s: med_by_sector.get(s, overall_med)).astype(flo
 df["expected_days"] = np.clip(np.round(0.7 * pred_days + 0.3 * floor), 7, 900).astype(int)
 
 df["region"] = df["region"].astype(str)
-df["region_name"] = df["region"].map(lambda r: NUTS.get(r, ("—", None, None))[0])
+df["region_name"] = df["region"].map(lambda r: NUTS.get(r, ("-", None, None))[0])
 
 def coords(ocid, region):
-    name, lat, lon = NUTS.get(region, ("—", 42.73, 25.48))  # център на БГ при липса
+    name, lat, lon = NUTS.get(region, ("-", 42.73, 25.48))  # център на БГ при липса
     h = int(hashlib.md5(str(ocid).encode()).hexdigest(), 16)
     jx = ((h % 1000) / 1000 - 0.5) * 0.25
     jy = (((h // 1000) % 1000) / 1000 - 0.5) * 0.25

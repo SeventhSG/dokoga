@@ -56,12 +56,12 @@ export default function DetailCard({ feature, onClose }: { feature: RepairFeatur
         <div className="detail-pred">
           <div className="detail-pred-row">
             <div>
-              <div className="detail-pred-n mono">{p.planned_days || "—"}</div>
+              <div className="detail-pred-n mono">{p.planned_days || "-"}</div>
               <div className="detail-pred-l">обещани дни</div>
             </div>
             <div className="detail-pred-arrow">→</div>
             <div>
-              <div className="detail-pred-n mono" style={{ color: c }}>{realistic || "—"}</div>
+              <div className="detail-pred-n mono" style={{ color: c }}>{realistic || "-"}</div>
               <div className="detail-pred-l">реалистично</div>
             </div>
           </div>

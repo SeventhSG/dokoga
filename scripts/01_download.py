@@ -1,5 +1,5 @@
 """Сваля договори+анекси (CSV zip) от data.egov.bg и инспектира съдържанието.
-Само stdlib — за бърза валидация преди да слагаме pandas/lightgbm.
+Само stdlib - за бърза валидация преди да слагаме pandas/lightgbm.
 """
 import io
 import os

@@ -8,7 +8,7 @@ import { riskLevel } from "../lib/risk";
 import { useTheme } from "../theme";
 import MapView, { type FocusTarget } from "../components/MapView";
 
-// център на всяка област (NUTS) — за полет към област от чата
+// център на всяка област (NUTS) - за полет към област от чата
 const REGION_CENTER: Record<string, [number, number]> = {
   "Видин": [43.99, 22.88], "Монтана": [43.41, 23.23], "Враца": [43.21, 23.55],
   "Плевен": [43.42, 24.61], "Ловеч": [43.13, 24.71], "Велико Търново": [43.08, 25.63],
@@ -51,7 +51,7 @@ export default function Dashboard() {
 
   const regions = useMemo(
     () =>
-      [...new Set(all.map((f) => f.properties.region).filter((r) => r && r !== "—"))].sort((a, b) =>
+      [...new Set(all.map((f) => f.properties.region).filter((r) => r && r !== "-"))].sort((a, b) =>
         a.localeCompare(b, "bg")
       ),
     [all]

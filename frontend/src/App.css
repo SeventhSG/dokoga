@@ -1,4 +1,4 @@
-/* ===== ДОКОГА? — dashboard + landing (theme-aware via tokens) ===== */
+/* ===== ДОКОГА? - dashboard + landing (theme-aware via tokens) ===== */
 
 /* ---------------- DASHBOARD ---------------- */
 .stage { position: fixed; inset: 0; overflow: hidden; }
@@ -222,7 +222,7 @@
 .lp-eyebrow { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--orange); margin-bottom: 14px; }
 .lp-eyebrow svg { vertical-align: -1px; }
 
-/* trust — AI fluency */
+/* trust - AI fluency */
 .lp-trust { max-width: 1100px; margin: 0 auto; padding: clamp(40px, 6vw, 72px) 28px; }
 .lp-trust-head { max-width: 60ch; }
 .lp-trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 36px; }
@@ -231,7 +231,7 @@
 .lp-trust-card h3 { margin: 0 0 8px; font-size: 16.5px; font-weight: 700; }
 .lp-trust-card p { margin: 0; font-size: 13.5px; color: var(--ink-2); line-height: 1.55; }
 
-/* method — data integrity */
+/* method - data integrity */
 .lp-method { max-width: 1000px; margin: 0 auto; padding: clamp(40px, 6vw, 72px) 28px; }
 .lp-method-head { text-align: center; max-width: 56ch; margin: 0 auto; }
 .lp-method-head p { margin: 12px 0 0; color: var(--ink-2); font-size: 15px; }
@@ -241,7 +241,7 @@
 .lp-method-k { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--orange); padding-top: 2px; }
 .lp-method-v { font-size: 14px; color: var(--ink-2); line-height: 1.6; }
 
-/* next — sustainability */
+/* next - sustainability */
 .lp-next { max-width: 1100px; margin: 0 auto; padding: clamp(40px, 6vw, 72px) 28px; }
 .lp-next-head { text-align: center; }
 .lp-next-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 36px; }

@@ -112,12 +112,12 @@ export async function renderShareCard(d: CardData): Promise<Blob> {
 export async function shareCard(d: CardData) {
   const blob = await renderShareCard(d);
   const file = new File([blob], "dokoga.png", { type: "image/png" });
-  const text = `${d.category} в ${d.region}: ${d.riskPct}% риск от просрочване, ~${d.expectedDays} дни забавяне. Провери своя ремонт — ДОКОГА?`;
+  const text = `${d.category} в ${d.region}: ${d.riskPct}% риск от просрочване, ~${d.expectedDays} дни забавяне. Провери своя ремонт - ДОКОГА?`;
 
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
   if (nav.canShare?.({ files: [file] })) {
     try { await nav.share({ files: [file], title: "ДОКОГА?", text }); return; }
-    catch { /* user cancelled or share failed — fall through to download */ }
+    catch { /* user cancelled or share failed - fall through to download */ }
   }
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

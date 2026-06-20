@@ -1,4 +1,4 @@
-"""HTTP endpoint за 'Докога?' — чат + предиктор, със защити.
+"""HTTP endpoint за 'Докога?' - чат + предиктор, със защити.
 Стартиране:  uvicorn serve:app --port 8000   (от папка backend/)
 """
 import os
@@ -118,7 +118,7 @@ def analyze(inp: AnalyzeIn):
     facts = inp.model_dump()
     facts["title"] = _clean(facts.get("title", ""))
     try:
-        # драйверите идват от модела — за конкретния сектор/стойност/срок
+        # драйверите идват от модела - за конкретния сектор/стойност/срок
         drivers = predictor.predict({
             "category": "works", "sector": facts["sector"], "value": facts["value"],
             "region": facts["region"], "month": 6, "planned_days": facts["planned_days"],
