@@ -10,6 +10,7 @@ import ThemeToggle from "../components/ThemeToggle";
 import DelayBar from "../components/DelayBar";
 import Predictor from "../components/Predictor";
 import CountUp from "../components/CountUp";
+import Logo from "../components/Logo";
 
 const EASE = [0.16, 1, 0.3, 1] as [number, number, number, number];
 const LIFT = { whileHover: { y: -4 }, transition: { duration: 0.25, ease: EASE } };
@@ -72,9 +73,12 @@ export default function Landing() {
   return (
     <div className="lp">
       <nav className="lp-nav">
-        <span className="lp-mark display">
-          ДОКОГА<span style={{ color: "var(--orange)" }}>?</span>
-        </span>
+        <Link to="/" className="lp-brand">
+          <Logo size={34} className="logo-rounded" />
+          <span className="lp-mark display">
+            ДОКОГА<span style={{ color: "var(--orange)" }}>?</span>
+          </span>
+        </Link>
         <div className="lp-nav-r">
           <ThemeToggle theme={theme} onToggle={toggle} />
           <Link to="/app" className="btn btn-primary">
@@ -213,6 +217,7 @@ export default function Landing() {
       </section>
 
       <footer className="lp-footer">
+        <Logo size={64} className="logo-rounded lp-footer-logo" />
         <span className="display lp-mark">
           ДОКОГА<span style={{ color: "var(--orange)" }}>?</span>
         </span>

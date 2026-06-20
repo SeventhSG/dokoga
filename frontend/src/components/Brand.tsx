@@ -1,4 +1,5 @@
 import DelayBar from "./DelayBar";
+import Logo from "./Logo";
 
 interface Props {
   total: number;
@@ -8,9 +9,12 @@ interface Props {
 export default function Brand({ total, atRisk }: Props) {
   return (
     <div className="glass brand">
-      <h1 className="display">
-        ДОКОГА<span className="q">?</span>
-      </h1>
+      <div className="brand-head">
+        <Logo size={40} className="logo-rounded" />
+        <h1 className="display">
+          ДОКОГА<span className="q">?</span>
+        </h1>
+      </div>
       <p className="tag">
         AI прогноза кога обществените ремонти РЕАЛНО свършват. Спрямо обещания срок.
       </p>

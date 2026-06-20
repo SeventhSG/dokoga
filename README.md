@@ -1,4 +1,8 @@
-# Докога? / Dokoga
+<p align="center">
+  <img src="./dokoga-logo.svg" alt="ДОКОГА?" width="160" />
+</p>
+
+<h1 align="center">Докога? / Dokoga</h1>
 
 **AI прогноза за просрочването на обществените ремонти в България.**
 

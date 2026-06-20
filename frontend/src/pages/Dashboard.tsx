@@ -66,16 +66,16 @@ export default function Dashboard() {
 
       <div className="hud">
         <div className="rail">
-          <motion.div {...rail(0)}>
+          <motion.div {...rail(0)} style={{ position: "relative", zIndex: 40 }}>
             <Brand total={all.length} atRisk={nationalHigh} />
           </motion.div>
-          <motion.div {...rail(1)}>
+          <motion.div {...rail(1)} style={{ position: "relative", zIndex: 30 }}>
             <RegionFilter regions={regions} value={region} onChange={setRegion} count={features.length} atRiskPct={atRiskPct} />
           </motion.div>
-          <motion.div {...rail(2)}>
+          <motion.div {...rail(2)} style={{ position: "relative", zIndex: 20 }}>
             <SectorFilter value={sector} onChange={setSector} counts={sectorCounts} />
           </motion.div>
-          <motion.div {...rail(3)}>
+          <motion.div {...rail(3)} style={{ position: "relative", zIndex: 10 }}>
             <Legend />
           </motion.div>
         </div>
