@@ -74,14 +74,15 @@ clf.booster_.save_model(os.path.join(MODELS, "risk.txt"))
 # ---- Модел 2: очаквани дни просрочване (регресия върху положителните) ----
 pos = df[df["overrun_days"] > 0].copy()
 Xp, yp = pos[FEATS], np.log1p(pos["overrun_days"])
-reg = lgb.LGBMRegressor(n_estimators=250, learning_rate=0.03, num_leaves=15,
-                        subsample=0.8, colsample_bytree=0.8, min_child_samples=10,
-                        random_state=42, verbose=-1)
+reg = lgb.LGBMRegressor(objective="regression_l1", n_estimators=300, learning_rate=0.01, num_leaves=3,
+                        subsample=0.8, colsample_bytree=0.8, min_child_samples=5,
+                        reg_alpha=1.0, reg_lambda=1.0, random_state=42, verbose=-1)
 kf = KFold(5, shuffle=True, random_state=42)
-oof_r = cross_val_predict(reg, Xp, yp, cv=kf)
-mae = mean_absolute_error(np.expm1(yp), np.expm1(oof_r))
-base_mae = mean_absolute_error(np.expm1(yp), np.full(len(yp), np.expm1(yp).median()))
-print(f"\n[ДНИ модел]  MAE={mae:.0f} дни  (baseline=median -> {base_mae:.0f} дни)  n={len(pos)}")
+oof_r = np.expm1(cross_val_predict(reg, Xp, yp, cv=kf))
+mae = mean_absolute_error(pos["overrun_days"], oof_r)
+med_ae = np.median(abs(pos["overrun_days"] - oof_r))
+base_mae = mean_absolute_error(pos["overrun_days"], np.full(len(yp), pos["overrun_days"].median()))
+print(f"\n[ДНИ модел]  MAE={mae:.0f} дни  MedAE={med_ae:.1f} дни  (baseline MAE={base_mae:.0f} дни)  n={len(pos)}")
 reg.fit(Xp, yp)
 reg.booster_.save_model(os.path.join(MODELS, "days.txt"))
 
@@ -93,7 +94,7 @@ for cat, g in df.groupby("category", observed=True):
 
 metrics = {"n": len(df), "n_overrun": int(y_clf.sum()), "base_rate": float(y_clf.mean()),
            "risk_roc_auc": float(auc), "risk_pr_auc": float(ap), "pr_auc_baseline": float(base_ap),
-           "days_mae": float(mae), "days_mae_baseline": float(base_mae), "n_positives": int(len(pos)),
+           "days_mae": float(mae), "days_mae_baseline": float(base_mae), "days_med_ae": float(med_ae), "n_positives": int(len(pos)),
            "features": FEATS, "importance": {f: int(v) for f, v in imp}}
 json.dump(metrics, open(os.path.join(PROC, "metrics.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 print("\nмодели -> models/risk.txt, models/days.txt | метрики -> data/processed/metrics.json")

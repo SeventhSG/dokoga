@@ -5,8 +5,9 @@
  "risk_roc_auc": 0.9820625353282977,
  "risk_pr_auc": 0.8333188297849738,
  "pr_auc_baseline": 0.06465324384787471,
- "days_mae": 122.70201067889504,
+ "days_mae": 116.26525970096172,
  "days_mae_baseline": 117.42560553633218,
+ "days_med_ae": 24.92422647541514,
  "n_positives": 289,
  "features": [
   "category",
