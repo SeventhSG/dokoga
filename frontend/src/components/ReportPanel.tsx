@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getReport, confirmReport } from "../lib/reportsApi";
 import { CATEGORY_LABELS, type ReportDetail } from "../lib/reportTypes";
 
@@ -18,10 +18,10 @@ export function ReportPanel({ id, onClose, onChanged }: {
   const [r, setR] = useState<ReportDetail | null>(null);
   const [msg, setMsg] = useState("");
 
-  async function load() {
-    setR(await getReport(id).catch(() => null));
-  }
-  useEffect(() => { load(); }, [id]);
+  const load = useCallback(() => {
+    getReport(id).then(setR).catch(() => setR(null));
+  }, [id]);
+  useEffect(() => { load(); }, [load]);
 
   async function act(kind: "confirm" | "fixed") {
     try {
@@ -37,8 +37,8 @@ export function ReportPanel({ id, onClose, onChanged }: {
   if (!r) return null;
   const c = r.suggested_contracts[0];
   return (
-    <aside className="report-panel">
-      <button className="close" onClick={onClose}>×</button>
+    <aside className="report-panel" role="dialog" aria-modal="true" aria-label="Детайли за сигнала">
+      <button className="close" onClick={onClose} aria-label="Затвори">×</button>
       <h3>{CATEGORY_LABELS[r.category]}</h3>
       <span className="badge">{STATUS_BG[r.status] ?? r.status}</span>
       <p>{r.confirmations} граждани са засегнати · отговаря: <b>{r.region_name ?? "—"}</b></p>
@@ -53,7 +53,7 @@ export function ReportPanel({ id, onClose, onChanged }: {
         <button onClick={() => act("confirm")}>И аз съм засегнат</button>
         <button onClick={() => act("fixed")}>Решен е</button>
       </div>
-      {msg && <p className="form-msg">{msg}</p>}
+      {msg && <p className="form-msg" role="status" aria-live="polite">{msg}</p>}
     </aside>
   );
 }

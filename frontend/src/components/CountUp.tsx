@@ -19,7 +19,7 @@ export default function CountUp({ to, decimals = 0, prefix = "", suffix = "", du
   const [val, setVal] = useState(reduce ? to : 0);
 
   useEffect(() => {
-    if (reduce) { setVal(to); return; }
+    if (reduce) return;   // no animation; render `to` directly below
     let raf = 0;
     const t0 = performance.now();
     const tick = (now: number) => {
@@ -31,5 +31,5 @@ export default function CountUp({ to, decimals = 0, prefix = "", suffix = "", du
     return () => cancelAnimationFrame(raf);
   }, [to, duration, reduce]);
 
-  return <>{prefix}{fmt(val, decimals)}{suffix}</>;
+  return <>{prefix}{fmt(reduce ? to : val, decimals)}{suffix}</>;
 }

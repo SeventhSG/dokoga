@@ -7,8 +7,9 @@ import email_validate, mailer
 
 CODE_TTL_MIN = 10
 MAX_ATTEMPTS = 5
-RATE_N = 3        # max code requests ...
-RATE_DAYS = 3    # ... per this many days, per email
+RATE_N = 3          # max code requests ...
+RATE_DAYS = 3      # ... per this many days, per email
+SESSION_TTL_DAYS = 30
 
 
 def _h(s: str) -> str:
@@ -36,8 +37,12 @@ def request_code(con, name, email):
         "INSERT INTO email_codes (email_hash, code_hash, name) VALUES (?,?,?)",
         (eh, _h(eh + ":" + code), name.strip()[:80]))
     con.commit()
-    sent = mailer.send_code(email_validate.normalize(email), code)
-    return {"sent": sent, "dev_code": None if sent else code}
+    try:
+        sent = mailer.send_code(email_validate.normalize(email), code)
+    except RuntimeError:
+        raise ValueError("mail_failed")
+    # The code is ONLY ever returned to the client in explicit dev mode.
+    return {"sent": sent, "dev_code": code if (not sent and mailer.is_dev()) else None}
 
 
 def verify_code(con, email, code):
@@ -57,7 +62,11 @@ def verify_code(con, email, code):
         con.execute("UPDATE email_codes SET attempts=attempts+1 WHERE id=?", (row["id"],))
         con.commit()
         raise ValueError("bad_code")
-    con.execute("UPDATE email_codes SET consumed=1 WHERE id=?", (row["id"],))
+    # Atomic consume: only one concurrent verify can win this row.
+    cur = con.execute("UPDATE email_codes SET consumed=1 WHERE id=? AND consumed=0", (row["id"],))
+    if cur.rowcount != 1:
+        con.commit()
+        raise ValueError("expired")
     con.execute("INSERT OR IGNORE INTO users (email_hash, name) VALUES (?,?)", (eh, row["name"]))
     con.execute("UPDATE users SET name=COALESCE(name, ?) WHERE email_hash=?", (row["name"], eh))
     user_id = con.execute("SELECT id FROM users WHERE email_hash=?", (eh,)).fetchone()[0]
@@ -70,8 +79,17 @@ def verify_code(con, email, code):
 def user_from_token(con, token):
     if not token:
         return None
-    r = con.execute("SELECT user_id FROM sessions WHERE token_hash=?", (_h(token),)).fetchone()
+    r = con.execute(
+        "SELECT user_id FROM sessions WHERE token_hash=? "
+        "AND created_at >= datetime('now', ?)",
+        (_h(token), f"-{SESSION_TTL_DAYS} days")).fetchone()
     return r[0] if r else None
+
+
+def revoke_token(con, token):
+    if token:
+        con.execute("DELETE FROM sessions WHERE token_hash=?", (_h(token),))
+        con.commit()
 
 
 def user_record(con, user_id):

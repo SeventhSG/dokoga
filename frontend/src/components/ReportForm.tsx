@@ -17,8 +17,9 @@ export function ReportForm({ lat, lng, onDone }: { lat: number; lng: number; onD
     try {
       const r = await createReport(lat, lng, cat, note);
       if (r.duplicate_of) {
-        await confirmReport(r.duplicate_of);
-        setMsg("Този проблем вече е докладван — потвърдихме сигнала ти. ✓");
+        // "already confirmed" (409) is still a success from the user's POV.
+        try { await confirmReport(r.duplicate_of); } catch { /* already confirmed */ }
+        setMsg("Този проблем вече е докладван — отчетохме сигнала ти. ✓");
       } else {
         setMsg(r.region_name ? `Подаден сигнал за ${r.region_name}. ✓` : "Подаден сигнал. ✓");
       }
@@ -40,12 +41,13 @@ export function ReportForm({ lat, lng, onDone }: { lat: number; lng: number; onD
   return (
     <div className="report-form">
       <p className="form-label">Какъв е проблемът?</p>
-      <div className="cat-chips">
+      <div className="cat-chips" role="group" aria-label="Вид проблем">
         {(Object.entries(CATEGORY_LABELS) as [Category, string][]).map(([k, v]) => (
           <button
             key={k}
             type="button"
             className={"cat-chip" + (cat === k ? " active" : "")}
+            aria-pressed={cat === k}
             onClick={() => setCat(k)}
           >
             {v}
@@ -59,7 +61,7 @@ export function ReportForm({ lat, lng, onDone }: { lat: number; lng: number; onD
         onChange={(e) => setNote(e.target.value)}
       />
       <button className="submit-btn" onClick={submit}>Подай сигнал</button>
-      {msg && <p className="form-msg">{msg}</p>}
+      {msg && <p className="form-msg" role="status" aria-live="polite">{msg}</p>}
     </div>
   );
 }

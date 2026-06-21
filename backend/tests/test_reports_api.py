@@ -70,9 +70,19 @@ def test_three_distinct_users_verify(tmp_path, monkeypatch):
     rid = _make_report(c, _auth(c, "owner@gmail.com", "Owner"))
     last = None
     for i in range(3):
-        h = _auth(c, f"user{i}@gmail.com", f"User{i}")
+        h = {**_auth(c, f"user{i}@gmail.com", f"User{i}"), "X-Forwarded-For": f"10.0.0.{i}"}
         last = c.post(f"/reports/{rid}/confirm", headers=h, json={}).json()
     assert last["status"] == "verified"
+
+
+def test_same_ip_cluster_flags_brigade(tmp_path, monkeypatch):
+    c = _client(tmp_path, monkeypatch)
+    rid = _make_report(c, _auth(c, "owner@gmail.com", "Owner"))
+    last = None
+    for i in range(3):  # different accounts, SAME ip -> brigade
+        h = {**_auth(c, f"b{i}@gmail.com", f"B{i}"), "X-Forwarded-For": "9.9.9.9"}
+        last = c.post(f"/reports/{rid}/confirm", headers=h, json={}).json()
+    assert last["status"] == "under_review"
 
 
 def test_same_user_second_confirm_rejected(tmp_path, monkeypatch):

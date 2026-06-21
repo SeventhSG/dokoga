@@ -21,23 +21,30 @@ export default function Report() {
   const [draft, setDraft] = useState<{ lat: number; lng: number } | null>(null);
   const [picked, setPicked] = useState<number | null>(null);
   const [locating, setLocating] = useState(false);
+  const [geoMsg, setGeoMsg] = useState("");
+  const [loadErr, setLoadErr] = useState(false);
 
   async function refresh() {
-    setPins(await listReports({ min_lat: 41, min_lng: 22, max_lat: 44.5, max_lng: 29 }).catch(() => []));
+    try {
+      setPins(await listReports({ min_lat: 41, min_lng: 22, max_lat: 44.5, max_lng: 29 }));
+      setLoadErr(false);
+    } catch {
+      setLoadErr(true);
+    }
   }
   useEffect(() => { refresh(); }, []);
 
   function report() {
-    setPicked(null);
+    setPicked(null); setGeoMsg("");
     if (!navigator.geolocation) {
-      alert("Браузърът не поддържа местоположение — докосни картата, за да посочиш мястото.");
+      setGeoMsg("Браузърът не дава местоположение — докосни картата, за да посочиш мястото.");
       return;
     }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => { setLocating(false); setDraft({ lat: pos.coords.latitude, lng: pos.coords.longitude }); },
-      () => { setLocating(false); alert("Няма достъп до местоположение — докосни картата, за да посочиш мястото."); },
-      { enableHighAccuracy: true, timeout: 8000 },
+      () => { setLocating(false); setGeoMsg("Няма достъп до местоположение — докосни картата, за да посочиш мястото."); },
+      { enableHighAccuracy: false, timeout: 8000 },
     );
   }
 
@@ -67,19 +74,25 @@ export default function Report() {
         <TrackpadPan />
       </MapContainer>
 
+      {loadErr && (
+        <div className="map-error" role="alert">Сигналите не се заредиха. Сървърът включен ли е?</div>
+      )}
+
       {!draft && picked == null && (
         <div className="report-fab-wrap">
           <button className="report-fab" onClick={report} disabled={locating}>
             <span className="report-fab-icon">⚠</span>
             {locating ? "Определяме мястото…" : "Подай сигнал"}
           </button>
-          <p className="report-fab-hint">или докосни картата, за да посочиш мястото</p>
+          <p className="report-fab-hint" role="status" aria-live="polite">
+            {geoMsg || "или докосни картата, за да посочиш мястото"}
+          </p>
         </div>
       )}
 
       {draft && (
-        <div className="report-sheet">
-          <button className="sheet-close" onClick={() => setDraft(null)}>×</button>
+        <div className="report-sheet" role="dialog" aria-modal="true" aria-label="Подай сигнал">
+          <button className="sheet-close" onClick={() => setDraft(null)} aria-label="Затвори">×</button>
           <p className="sheet-pinhint">📍 Карфицата е поставена. Докосни друго място на картата, за да я преместиш.</p>
           <ReportForm lat={draft.lat} lng={draft.lng} onDone={() => { setDraft(null); refresh(); }} />
         </div>

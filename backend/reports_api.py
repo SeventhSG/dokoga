@@ -1,25 +1,35 @@
 """FastAPI router for the citizen report loop."""
-import json, math
-from fastapi import APIRouter, Header, Cookie, Response, HTTPException
+import json, math, os, logging
+from fastapi import APIRouter, Header, Cookie, Response, Request, HTTPException
 from pydantic import BaseModel, Field
 
 import reports_db, geo, contracts_match, corroboration, antibrigade, auth
 
+log = logging.getLogger("dokoga.reports")
 router = APIRouter()
 DUP_RADIUS_M = 50
+DUP_WINDOW_DEG = 0.001            # ~70-110m box; covers the 50m radius across cells
 COOKIE = "dokoga_sess"
-COOKIE_MAX_AGE = 60 * 60 * 24 * 365  # 1 year
+COOKIE_MAX_AGE = 60 * 60 * 24 * 30   # 30 days (matches session TTL)
+COOKIE_SECURE = os.environ.get("DOKOGA_DEV") != "1"
 
 # Ensure the report tables exist on the configured DB whenever this router is
 # loaded (tests monkeypatch reports_db.DB and re-init their own temp DBs).
 try:
     _c = reports_db.con(); reports_db.init_db(_c); _c.close()
-except Exception:
-    pass
+except Exception as e:  # log, don't hide a broken migration
+    log.warning("report schema init failed: %s", e)
 
 
 def _token(authorization, cookie_token):
     return cookie_token or (authorization or "").removeprefix("Bearer ").strip() or None
+
+
+def _client_ip(request: Request) -> str:
+    xff = request.headers.get("x-forwarded-for", "")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else ""
 
 
 def _uid(con, authorization, cookie_token):
@@ -38,7 +48,7 @@ def _meters(a_lat, a_lng, b_lat, b_lng):
 
 
 _ERR_STATUS = {"bad_domain": 400, "no_name": 400, "rate_limited": 429,
-               "expired": 410, "too_many": 429, "bad_code": 400}
+               "expired": 410, "too_many": 429, "bad_code": 400, "mail_failed": 503}
 
 
 class RequestIn(BaseModel):
@@ -56,12 +66,10 @@ class ReportIn(BaseModel):
     lng: float = Field(ge=22.0, le=29.0)
     category: str = Field(max_length=30)
     note: str = Field(default="", max_length=280)
-    device_id: int | None = None
 
 
 class ConfirmIn(BaseModel):
     kind: str = Field(default="confirm", pattern="^(confirm|fixed|nothere)$")
-    device_id: int | None = None
 
 
 @router.post("/auth/request")
@@ -85,7 +93,7 @@ def auth_verify(body: VerifyIn, response: Response):
     finally:
         con.close()
     response.set_cookie(COOKIE, s["token"], max_age=COOKIE_MAX_AGE,
-                        httponly=True, samesite="lax", path="/")
+                        httponly=True, samesite="lax", secure=COOKIE_SECURE, path="/")
     return s
 
 
@@ -102,24 +110,34 @@ def auth_me(authorization: str = Header(default=""), dokoga_sess: str | None = C
 
 
 @router.post("/auth/logout")
-def auth_logout(response: Response):
+def auth_logout(response: Response, authorization: str = Header(default=""),
+                dokoga_sess: str | None = Cookie(default=None)):
+    con = reports_db.con()
+    try:
+        auth.revoke_token(con, _token(authorization, dokoga_sess))
+    finally:
+        con.close()
     response.delete_cookie(COOKIE, path="/")
     return {"ok": True}
 
 
 @router.post("/reports")
-def create_report(body: ReportIn, authorization: str = Header(default=""),
+def create_report(body: ReportIn, request: Request, authorization: str = Header(default=""),
                   dokoga_sess: str | None = Cookie(default=None)):
     con = reports_db.con()
     try:
         uid = _uid(con, authorization, dokoga_sess)
-        gh = geo.encode(body.lat, body.lng)
+        # Exact dedup: scan a small lat/lng box (not a single geohash prefix, which
+        # misses points straddling a cell boundary), then Haversine-filter to 50m.
+        d = DUP_WINDOW_DEG
         for row in con.execute(
             "SELECT id, lat, lng FROM reports WHERE category=? AND status IN "
-            "('reported','verified','under_review') AND geohash LIKE ?",
-            (body.category, gh[:6] + "%")):
+            "('reported','verified','under_review') "
+            "AND lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?",
+            (body.category, body.lat - d, body.lat + d, body.lng - d, body.lng + d)):
             if _meters(body.lat, body.lng, row["lat"], row["lng"]) <= DUP_RADIUS_M:
                 return {"duplicate_of": row["id"], "id": row["id"], "status": "duplicate"}
+        gh = geo.encode(body.lat, body.lng)
         region = geo.attribute(body.lat, body.lng)
         status = "reported" if region else "unassigned"
         sugg = contracts_match.suggest(con, region, body.category) if region else []
@@ -136,18 +154,20 @@ def create_report(body: ReportIn, authorization: str = Header(default=""),
 
 
 @router.post("/reports/{report_id}/confirm")
-def confirm_report(report_id: int, body: ConfirmIn, authorization: str = Header(default=""),
+def confirm_report(report_id: int, body: ConfirmIn, request: Request,
+                   authorization: str = Header(default=""),
                    dokoga_sess: str | None = Cookie(default=None)):
     con = reports_db.con()
     try:
         uid = _uid(con, authorization, dokoga_sess)
         if not con.execute("SELECT 1 FROM reports WHERE id=?", (report_id,)).fetchone():
             raise HTTPException(404, "no_report")
-        ok, reason = antibrigade.can_confirm(con, report_id, uid, body.device_id)
+        ok, reason = antibrigade.can_confirm(con, report_id, uid)
         if not ok:
             raise HTTPException(409, reason)
-        con.execute("INSERT INTO confirmations (report_id,user_id,device_id,kind) "
-                    "VALUES (?,?,?,?)", (report_id, uid, body.device_id, body.kind))
+        ip_hash = auth._h(_client_ip(request)) if _client_ip(request) else None
+        con.execute("INSERT INTO confirmations (report_id,user_id,ip_hash,kind) "
+                    "VALUES (?,?,?,?)", (report_id, uid, ip_hash, body.kind))
         con.commit()
         status = corroboration.recompute(con, report_id)
         if antibrigade.is_brigaded(con, report_id):

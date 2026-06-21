@@ -1,0 +1,4 @@
+# LightGBM model dumps must stay byte-exact LF — CRLF breaks the parser
+# ("Model format error, expect a tree here").
+models/*.txt -text
+models/*.txt eol=lf

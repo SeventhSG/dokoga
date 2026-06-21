@@ -5,9 +5,11 @@ import os, sqlite3
 DB = os.path.join(os.path.dirname(__file__), "..", "data", "app", "projects.sqlite")
 
 def con() -> sqlite3.Connection:
-    c = sqlite3.connect(DB)
+    c = sqlite3.connect(DB, timeout=5.0)
     c.row_factory = sqlite3.Row
     c.execute("PRAGMA journal_mode=WAL")
+    c.execute("PRAGMA busy_timeout=5000")   # wait for writers instead of erroring
+    c.execute("PRAGMA synchronous=NORMAL")  # safe + fast under WAL
     return c
 
 SCHEMA = """

@@ -15,8 +15,22 @@ ALLOWED_DOMAINS = {
 _EMAIL_RE = re.compile(r"^[^@\s]+@([^@\s]+\.[^@\s]+)$")
 
 
+_GMAIL = {"gmail.com", "googlemail.com"}
+
+
 def normalize(email: str) -> str:
-    return (email or "").strip().lower()
+    """Lowercase/trim, and canonicalize Gmail so dots and +tags don't create
+    distinct identities (one mailbox = one account for the abuse model)."""
+    e = (email or "").strip().lower()
+    if "@" not in e:
+        return e
+    local, _, dom = e.partition("@")
+    if dom in _GMAIL:
+        local = local.split("+", 1)[0].replace(".", "")
+        dom = "gmail.com"
+    else:
+        local = local.split("+", 1)[0]
+    return f"{local}@{dom}"
 
 
 def domain_of(email: str):

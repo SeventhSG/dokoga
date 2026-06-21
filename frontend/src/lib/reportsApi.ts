@@ -1,4 +1,13 @@
-import type { Category, ReportPin, ReportDetail, Session } from "./reportTypes";
+import type { Category, ReportPin, ReportDetail, Session, Suggestion } from "./reportTypes";
+
+export interface CreateResult {
+  id: number;
+  status: string;
+  region_name: string | null;
+  suggested_contracts: Suggestion[];
+  duplicate_of?: number;
+}
+export interface ConfirmResult { status: string; confirmations: number; }
 
 const API_BASE = (import.meta.env as Record<string, string | undefined>).VITE_API_BASE ?? "http://localhost:8000";
 let session: Session | null = JSON.parse(localStorage.getItem("dokoga_session") || "null");
@@ -48,13 +57,13 @@ export async function verifyEmail(email: string, code: string): Promise<Session>
   return session!;
 }
 
-/** Returning visitor: recognised via cookie even if localStorage was cleared. */
+/** Returning visitor: recognised via the HttpOnly cookie even if localStorage
+ *  was cleared. Auth rides on the cookie (`credentials:"include"`); we do NOT
+ *  fabricate a token here. */
 export async function me(): Promise<{ user_id: number; name: string } | null> {
   const res = await api("/auth/me");
   if (!res.ok) return null;
-  const u = await res.json();
-  if (!session) session = { token: "", user_id: u.user_id, name: u.name };
-  return u;
+  return res.json();
 }
 
 export async function logout() {
@@ -63,14 +72,14 @@ export async function logout() {
   localStorage.removeItem("dokoga_session");
 }
 
-export async function createReport(lat: number, lng: number, category: Category, note = "") {
+export async function createReport(lat: number, lng: number, category: Category, note = ""): Promise<CreateResult> {
   const res = await api("/reports", { method: "POST", body: JSON.stringify({ lat, lng, category, note }) });
   if (res.status === 401) throw new Error("Влез с имейл, за да докладваш.");
   if (!res.ok) throw new Error("Неуспешно подаване");
   return res.json();
 }
 
-export async function confirmReport(id: number, kind: "confirm" | "fixed" | "nothere" = "confirm") {
+export async function confirmReport(id: number, kind: "confirm" | "fixed" | "nothere" = "confirm"): Promise<ConfirmResult> {
   const res = await api(`/reports/${id}/confirm`, { method: "POST", body: JSON.stringify({ kind }) });
   if (res.status === 401) throw new Error("Влез с имейл, за да потвърдиш.");
   if (res.status === 409) throw new Error("Вече потвърди този сигнал.");

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { PaperPlaneTilt, ChatCircleDots, Minus, X } from "@phosphor-icons/react";
 import { askDokoga, predictRepair } from "../lib/api";
+import { dayRange } from "../lib/risk";
 import type { ChatFocus } from "../lib/types";
 
 interface Msg {
@@ -76,10 +77,10 @@ export default function ChatDock({
         month: new Date().getMonth() + 1, planned_days: f.planned!, n_tenderers: 1, is_repair: 1,
       });
       if (r.error) throw new Error();
-      const days = r.expected_days;
+      const [lo, hi] = dayRange(r.expected_days);
       push({
         role: "bot",
-        text: `🔮 Груба прогноза: рискът от просрочване е ${Math.round(r.risk * 100)}% (${LEVELS[r.level]}). Вероятно ще се проточи с около +${days} дни над обещания срок.`,
+        text: `🔮 Груба прогноза: рискът от удължаване е ${Math.round(r.risk * 100)}% (${LEVELS[r.level]}). За такива проекти забавянето обикновено е +${lo}–${hi} дни (ориентир, не точно число).`,
       });
       if (r.drivers?.length) push({ role: "bot", text: "Защо: " + r.drivers.join("; ") + "." });
       push({
@@ -145,7 +146,7 @@ export default function ChatDock({
         </button>
       </div>
 
-      <div className="chat-body" ref={bodyRef}>
+      <div className="chat-body" ref={bodyRef} aria-live="polite">
         {msgs.map((m, i) => (
           <div key={i} className={`bubble ${m.role}`}>{m.text}</div>
         ))}

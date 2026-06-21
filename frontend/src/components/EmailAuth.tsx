@@ -7,30 +7,31 @@ export function EmailAuth({ onAuthed }: { onAuthed: (name: string) => void }) {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState("");
+  const [err, setErr] = useState(false);
   const [dev, setDev] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function send() {
-    setBusy(true); setMsg("");
+    setBusy(true); setMsg(""); setErr(false);
     try {
       const r = await requestCode(name.trim(), email.trim());
       setDev(r.dev_code);
       setStep("code");
       setMsg(r.sent ? "Изпратихме код на имейла ти. Провери и спам папката." : "");
     } catch (e) {
-      setMsg((e as Error).message);
+      setErr(true); setMsg((e as Error).message);
     } finally {
       setBusy(false);
     }
   }
 
   async function verify() {
-    setBusy(true); setMsg("");
+    setBusy(true); setMsg(""); setErr(false);
     try {
       const s = await verifyEmail(email.trim(), code.trim());
       onAuthed(s.name);
     } catch (e) {
-      setMsg((e as Error).message);
+      setErr(true); setMsg((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -39,7 +40,7 @@ export function EmailAuth({ onAuthed }: { onAuthed: (name: string) => void }) {
   return (
     <div className="email-auth">
       <p className="form-label">Влез, за да докладваш</p>
-      <p className="auth-sub">Анонимно си публично — имейлът ти не се показва, само пречи на спам.</p>
+      <p className="auth-sub">Публикуваш анонимно — имейлът ти не се показва, служи само срещу спам.</p>
       {step === "email" ? (
         <>
           <input className="auth-input" placeholder="Име" value={name}
@@ -63,7 +64,7 @@ export function EmailAuth({ onAuthed }: { onAuthed: (name: string) => void }) {
           {dev && <p className="dev-hint">DEV код (Resend още не е вкл.): <b>{dev}</b></p>}
         </>
       )}
-      {msg && <p className="form-msg">{msg}</p>}
+      {msg && <p className={"form-msg" + (err ? " err" : "")} role="status" aria-live="polite">{msg}</p>}
     </div>
   );
 }

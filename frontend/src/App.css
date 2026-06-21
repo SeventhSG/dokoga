@@ -386,6 +386,23 @@
 }
 .report-panel .suggested .muted { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-3); }
 
+/* --- Mobile / no-blur readability: glass must not be see-through over the map --- */
+@supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+  .glass, .rail, .report-sheet, .report-panel, .email-auth { background: var(--surface); }
+}
+@media (max-width: 720px) {
+  .glass, .rail, .report-sheet, .report-panel, .email-auth {
+    background: var(--surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .report-top { background: linear-gradient(180deg, var(--bg) 35%, rgba(var(--vg), 0)); }
+  .report-title {
+    background: var(--surface); padding: 5px 11px;
+    border-radius: 999px; border: 1px solid var(--glass-brd);
+  }
+}
+
 /* ---------------- RESPONSIVE ---------------- */
 @media (max-width: 860px) {
   .lp-hero { grid-template-columns: 1fr; gap: 32px; }

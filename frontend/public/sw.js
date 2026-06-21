@@ -1,6 +1,7 @@
 /* Докога? service worker — app-shell cache + network-first.
-   A fetch handler is required for installability on Android/Chrome. */
-const CACHE = "dokoga-v1";
+   A fetch handler is required for installability on Android/Chrome.
+   Bump CACHE on every deploy so old shells/assets are purged on activate. */
+const CACHE = "dokoga-v2";
 const SHELL = ["/", "/report", "/index.html", "/manifest.webmanifest",
   "/icons/icon-192.png", "/icons/icon-512.png"];
 

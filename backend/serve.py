@@ -31,7 +31,8 @@ ORIGINS = [
 RATE_N = int(os.environ.get("RATE_LIMIT", "30"))   # заявки
 RATE_WINDOW = 60                                    # секунди
 _hits: dict[str, deque] = defaultdict(deque)
-_GUARDED = {"/chat", "/predict", "/analyze", "/reports"}
+_GUARDED = {"/chat", "/predict", "/analyze", "/reports",
+            "/auth/request", "/auth/verify"}
 
 app = FastAPI(title="Докога? API", version="0.2")
 app.add_middleware(
