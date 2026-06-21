@@ -199,6 +199,12 @@
 .lp-nav-r { display: flex; align-items: center; gap: 12px; }
 .btn.lg { padding: 14px 22px; font-size: 15px; display: inline-flex; align-items: center; gap: 8px; }
 
+@media (max-width: 768px) {
+  .mobile-pwa-hide-map-cta {
+    display: none !important;
+  }
+}
+
 .lp-hero { max-width: 1180px; margin: 0 auto; padding: clamp(40px, 7vw, 88px) 28px; display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px; align-items: center; }
 .lp-hero h1 { margin: 0; font-size: clamp(38px, 5.4vw, 70px); font-weight: 800; line-height: 1; letter-spacing: -0.04em; text-wrap: balance; }
 .lp-sub { margin: 22px 0 30px; font-size: 17px; color: var(--ink-2); max-width: 44ch; line-height: 1.55; }

@@ -81,7 +81,7 @@ export default function Landing() {
         </Link>
         <div className="lp-nav-r">
           <ThemeToggle theme={theme} onToggle={toggle} />
-          <Link to="/app" className="btn btn-primary">
+          <Link to="/app" className="btn btn-primary mobile-pwa-hide-map-cta">
             Виж картата <ArrowRight size={15} weight="bold" />
           </Link>
         </div>
