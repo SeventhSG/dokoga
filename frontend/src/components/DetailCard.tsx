@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, MapPin, Sparkle, Path, Tree, Drop, Lightbulb, Buildings, Clock, Files, ArrowSquareOut } from "@phosphor-icons/react";
+import { X, MapPin, Sparkle, Path, Tree, Drop, Lightbulb, Buildings, Clock, Files, ArrowSquareOut, Megaphone } from "@phosphor-icons/react";
 import { AnimatePresence, motion } from "motion/react";
 import DelayBar from "./DelayBar";
 import { riskColor, riskLabel, money, daysLeft, dayRange, MODEL_NOTE } from "../lib/risk";
@@ -8,6 +8,37 @@ import type { RepairFeature, AnalyzeResponse } from "../lib/types";
 
 const SECTOR_ICON: Record<string, typeof Path> = {
   roads: Path, parks: Tree, water: Drop, lighting: Lightbulb, public: Buildings,
+};
+
+const MUNICIPAL_EMAILS: Record<string, string> = {
+  "Стара Загора": "obshtina@stara-zagora.bg",
+  "София (столица)": "bgoffice@sofia.bg",
+  "София област": "oblast@sofia.bg",
+  "Пловдив": "info@plovdiv.bg",
+  "Варна": "obshtina@varna.bg",
+  "Бургас": "obshtina@burgas.bg",
+  "Русе": "obshtina@ruse-bg.eu",
+  "Благоевград": "obshtina@blagoevgrad.bg",
+  "Велико Търново": "obshtina@veliko-turnovo.bg",
+  "Видин": "obshtina@vidin.bg",
+  "Враца": "obshtina@vratsa.bg",
+  "Габрово": "protocol@gabrovo.bg",
+  "Добрич": "obshtina@dobrich.bg",
+  "Кърджали": "obshtina@kardjali.bg",
+  "Кюстендил": "obshtina@kustendil.bg",
+  "Ловеч": "obshtina@lovech.bg",
+  "Монтана": "obshtina@montana.bg",
+  "Пазарджик": "obshtina@pazardzhik.bg",
+  "Перник": "obshtina@pernik.bg",
+  "Плевен": "obshtina@pleven.bg",
+  "Разград": "obshtina@razgrad.bg",
+  "Силистра": "obshtina@silistra.bg",
+  "Сливен": "obshtina@sliven.bg",
+  "Смолян": "obshtina@smolyan.bg",
+  "Търговище": "obshtina@targovishte.bg",
+  "Хасково": "obshtina@haskovo.bg",
+  "Шумен": "obshtina@shumen.bg",
+  "Ямбол": "obshtina@yambol.bg",
 };
 
 export default function DetailCard({ feature, onClose }: { feature: RepairFeature; onClose: () => void }) {
@@ -24,6 +55,14 @@ export default function DetailCard({ feature, onClose }: { feature: RepairFeatur
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(false);
 
+  // Signal State
+  const [signalOpen, setSignalOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
+  const [emailPhone, setEmailPhone] = useState("");
+
+  const municipalEmail = MUNICIPAL_EMAILS[p.region] || "obshtina@stara-zagora.bg";
+
   async function runAnalysis() {
     setBusy(true); setErr(false);
     try { setAnalysis(await analyzeProject(p)); }
@@ -31,8 +70,20 @@ export default function DetailCard({ feature, onClose }: { feature: RepairFeatur
     finally { setBusy(false); }
   }
 
+  function submitSignal(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name || !address) return;
+
+    const subject = `Сигнал по АПК за просрочен ремонт: ${p.title}`;
+    const body = `ДО:\nКмета на Община ${p.region || "Стара Загора"}\n\nСИГНАЛ\n(по реда на Глава осма от АПК)\n\nОТ:\n${name}\nАдрес за кореспонденция: ${address}\nКонтакт (тел/имейл): ${emailPhone || "Не е посочен"}\n\nОТНОСНО:\nНеобосновано просрочване на обществено-значим ремонт\n\nУважаеми господин Кмет,\n\nС настоящото подавам официален сигнал за просрочване на следния обект на Ваша територия:\n\n- Обект: "${p.title}"\n- Изпълнител: ${p.supplier || "няма данни"}\n- Стойност на договора: ${money(p.value, p.value_currency)}\n- Обещан срок по договор: ${p.planned_days || "—"} дни\n- Вече просрочен с: ${p.overrun_days} дни\n\nМоля да извършите проверка на място относно забавянето, да предприемете необходимите мерки спрямо изпълнителя и да ме уведомите писмено на посочения адрес в законоустановения едномесечен срок по чл. 121 от АПК.\n\nС уважение,\n${name}`;
+
+    const mailto = `mailto:${municipalEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(mailto, "_blank");
+    setSignalOpen(false);
+  }
+
   return (
-    <div className="glass">
+    <div className="glass" style={{ position: "relative" }}>
       <div className="detail-inner">
         <button className="close" onClick={onClose} aria-label="Затвори">
           <X size={16} weight="bold" />
@@ -148,11 +199,36 @@ export default function DetailCard({ feature, onClose }: { feature: RepairFeatur
           </p>
         )}
 
-        {!analysis && (
-          <button className="btn detail-ai-btn" onClick={runAnalysis} disabled={busy}>
-            <Sparkle size={16} weight="fill" /> {busy ? "AI анализира…" : "AI анализ: защо ще се бави?"}
-          </button>
-        )}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+          {!analysis && (
+            <button className="btn detail-ai-btn" onClick={runAnalysis} disabled={busy}>
+              <Sparkle size={16} weight="fill" /> {busy ? "AI анализира…" : "AI анализ: защо ще се бави?"}
+            </button>
+          )}
+          {p.overrun_days > 0 && (
+            <button
+              className="btn"
+              onClick={() => setSignalOpen(true)}
+              style={{
+                background: "rgba(239, 68, 68, 0.12)",
+                color: "#ef4444",
+                border: "1px solid rgba(239, 68, 68, 0.25)",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                justifyContent: "center",
+                padding: "8px 12px",
+                borderRadius: 4,
+                cursor: "pointer",
+                fontWeight: "bold",
+                fontSize: 12
+              }}
+            >
+              <Megaphone size={16} weight="fill" /> Подай сигнал за просрочване
+            </button>
+          )}
+        </div>
+
         {err && <p className="detail-ai-err">AI анализът не успя. Backend стартиран ли е?</p>}
 
         <AnimatePresence>
@@ -178,6 +254,122 @@ export default function DetailCard({ feature, onClose }: { feature: RepairFeatur
                   ))}
                 </div>
               )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {signalOpen && (
+            <motion.div
+              className="signal-modal-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{
+                position: "absolute",
+                top: 0, left: 0, right: 0, bottom: 0,
+                background: "rgba(15, 23, 32, 0.96)",
+                backdropFilter: "blur(4px)",
+                borderRadius: 8,
+                zIndex: 100,
+                display: "flex",
+                flexDirection: "column",
+                padding: 16,
+                overflowY: "auto"
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h4 style={{ margin: 0, color: "#ef4444", fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
+                  <Megaphone size={16} weight="fill" /> Подаване на официален сигнал
+                </h4>
+                <button className="close" onClick={() => setSignalOpen(false)} aria-label="Затвори" style={{ position: "static", background: "none", border: "none", color: "var(--ink-2)", cursor: "pointer" }}>
+                  <X size={16} weight="bold" />
+                </button>
+              </div>
+
+              <p style={{ fontSize: 11, color: "var(--ink-3)", lineHeight: 1.4, margin: "0 0 12px" }}>
+                По закон (АПК Гл. 8), общината е длъжна да заведе и разгледа сигнала Ви.
+                <b style={{ color: "#ef4444" }}> Анонимни сигнали не се разглеждат</b>, затова се изискват имена и адрес.
+                Сигналът ще се генерира като официален писмен текст и ще се зареди във Вашия имейл клиент за изпращане до <b>{municipalEmail}</b>.
+              </p>
+
+              <form onSubmit={submitSignal} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <label style={{ fontSize: 11, color: "var(--ink-2)", display: "flex", flexDirection: "column", gap: 3, textAlign: "left" }}>
+                  Трите Ви имена (задължително)
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="напр. Георги Иванов Петров"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 4,
+                      padding: "6px 10px",
+                      color: "white",
+                      fontSize: 12,
+                      outline: "none"
+                    }}
+                  />
+                </label>
+
+                <label style={{ fontSize: 11, color: "var(--ink-2)", display: "flex", flexDirection: "column", gap: 3, textAlign: "left" }}>
+                  Адрес за кореспонденция (задължително)
+                  <input
+                    type="text"
+                    required
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="напр. гр. Стара Загора, ул. Боруйград 42"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 4,
+                      padding: "6px 10px",
+                      color: "white",
+                      fontSize: 12,
+                      outline: "none"
+                    }}
+                  />
+                </label>
+
+                <label style={{ fontSize: 11, color: "var(--ink-2)", display: "flex", flexDirection: "column", gap: 3, textAlign: "left" }}>
+                  Телефон / Имейл за обратна връзка
+                  <input
+                    type="text"
+                    value={emailPhone}
+                    onChange={(e) => setEmailPhone(e.target.value)}
+                    placeholder="напр. 0888 123 456 или georgi@mail.bg"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 4,
+                      padding: "6px 10px",
+                      color: "white",
+                      fontSize: 12,
+                      outline: "none"
+                    }}
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  style={{
+                    background: "#ef4444",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 4,
+                    padding: "8px 12px",
+                    fontWeight: "bold",
+                    marginTop: 10,
+                    cursor: "pointer",
+                    fontSize: 12
+                  }}
+                >
+                  Генерирай и изпрати имейл
+                </button>
+              </form>
             </motion.div>
           )}
         </AnimatePresence>
