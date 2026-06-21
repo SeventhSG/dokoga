@@ -16,7 +16,19 @@
 
 .hud { position: absolute; inset: 0; z-index: var(--z-hud); pointer-events: none; padding: 20px; }
 .hud > * { pointer-events: auto; }
-.rail { display: flex; flex-direction: column; gap: 14px; width: 320px; max-width: calc(100vw - 40px); }
+.rail { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 14px; 
+  width: 320px; 
+  max-width: calc(100vw - 40px); 
+  max-height: calc(100vh - 40px); 
+  overflow-y: auto; 
+  scrollbar-width: none; /* Firefox */
+}
+.rail::-webkit-scrollbar {
+  display: none; /* Safari/Chrome */
+}
 
 .topbar { position: absolute; top: 20px; right: 20px; z-index: var(--z-nav); display: flex; gap: 10px; align-items: center; }
 .topbar .btn { display: inline-flex; align-items: center; gap: 7px; }
