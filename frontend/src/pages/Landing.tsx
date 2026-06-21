@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   MapTrifold, ArrowRight, Database, Brain, MapPin,
   FlowArrow, ChartLineUp, Scales, ShieldCheck, GitBranch,
-  ArrowsClockwise, ClockCounterClockwise, Megaphone,
+  ArrowsClockwise, ClockCounterClockwise, Megaphone, CaretDown,
 } from "@phosphor-icons/react";
 import { useTheme } from "../theme";
 import ThemeToggle from "../components/ThemeToggle";
@@ -65,6 +66,7 @@ const NEXT = [
 export default function Landing() {
   const { theme, toggle } = useTheme();
   const reduce = useReducedMotion();
+  const [openStepIndex, setOpenStepIndex] = useState<number | null>(null);
   // animate on mount (not whileInView) so content is never gated behind an
   // observer that may not fire in headless/hidden contexts
   const fade = (d = 0) =>
@@ -153,6 +155,42 @@ export default function Landing() {
               <p>{s.d}</p>
             </motion.div>
           ))}
+        </div>
+        <div className="lp-steps-accordion">
+          {STEPS.map((s, i) => {
+            const isOpen = openStepIndex === i;
+
+            return (
+              <motion.div className="lp-step lp-step-acc" key={s.t} {...fade(i * 0.1)}>
+                <button
+                  type="button"
+                  className="lp-step-acc-head"
+                  aria-expanded={isOpen}
+                  onClick={() => setOpenStepIndex(isOpen ? null : i)}
+                >
+                  <span className="lp-step-acc-meta">
+                    <span className="lp-step-no mono">0{i + 1}</span>
+                    <s.icon size={22} weight="duotone" className="lp-step-ic" />
+                  </span>
+                  <span className="lp-step-acc-title">{s.t}</span>
+                  <CaretDown size={18} weight="bold" className="lp-step-acc-chevron" />
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      className="lp-step-acc-body"
+                      initial={reduce ? false : { height: 0, opacity: 0 }}
+                      animate={reduce ? { height: "auto", opacity: 1 } : { height: "auto", opacity: 1 }}
+                      exit={reduce ? { height: 0, opacity: 0 } : { height: 0, opacity: 0 }}
+                      transition={{ duration: reduce ? 0 : 0.24, ease: EASE }}
+                    >
+                      <p>{s.d}</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            );
+          })}
         </div>
       </section>
 
