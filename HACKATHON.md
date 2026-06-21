@@ -48,10 +48,10 @@ We created a digital map of Bulgaria called "Dokoga?" (Until When?), where anyon
 
 Language(s): Python, TypeScript, SQL
 Frontend: React, Vite, react-router, Leaflet (react-leaflet), Motion (анимации), Phosphor (иконки)
-Backend: FastAPI, SQLite, google-genai SDK, Uvicorn
+Backend: FastAPI, SQLite, google-genai SDK, Uvicorn, Nginx (как Load Balancer / Reverse Proxy)
 Data tools / libraries: pandas, LightGBM (LGBMClassifier & LGBMRegressor), scikit-learn, CairoSVG
 APIs / services: Google GenAI API (gemini-2.0-flash), Fallbacks (gemma-4-31b-it, gemma-4-26b-a4b-it)
-Hosting / deployment: Local/Self-hosted (FastAPI на порт 8001/8000)
+Hosting / deployment: Пълна Docker среда (с мулти-стейдж build) и Nginx за балансиране на натоварването (порт 8000).
 
 ---
 
@@ -59,7 +59,7 @@ Hosting / deployment: Local/Self-hosted (FastAPI на порт 8001/8000)
 
 *The architecture — how do the pieces talk to each other?*
 **(helps your score on: Tech Execution)**
-[Raw OCDS JSON packages from egov.bg] -> [pandas processing and category selection] -> [Training LightGBM models] -> [Export to GeoJSON & SQLite] -> [FastAPI Backend with LLM Grounding layer] -> [Interactive React Frontend with Leaflet map].
+[Raw OCDS JSON packages from egov.bg] -> [pandas processing and category selection] -> [Training LightGBM models] -> [Export to GeoJSON & SQLite] -> [FastAPI Backend replicas] -> [Nginx Load Balancer / Gateway] -> [Interactive React Frontend with Leaflet map].
 
 ---
 
@@ -90,8 +90,11 @@ What we did to it: We assembled 11 bi-weekly packages (25,980 releases, 18,206 u
 
 *Imagine 10,000 people show up tomorrow — what happens?*
 **(helps your score on: Adaptive Sustainability)**
-If 10,000 people visit the platform tomorrow, the interactive map will hold up without any issues since it runs using a lightweight, static GeoJSON file on the client side. The primary bottleneck would be the load on the AI chat and the predictor. Because we use SQLite and external LLM APIs, we would first hit the rate limits of Google GenAI. To handle this, we added a local rate limit and fallback logic across multiple models.
-Furthermore, we generalized our crawler (`scrape_eop.py`) to accept any buyer ID. We can now scrape and display active public tenders for **all major municipalities in Bulgaria** (Sofia, Plovdiv, Varna, Burgas, Stara Zagora) simultaneously, which are dynamically geocoded and integrated onto the map on the fly.
+If 10,000 people visit the platform tomorrow, the interactive map will hold up without any issues since it runs using a lightweight, static GeoJSON file on the client side.
+За да скалираме сървърната част (FastAPI API и AI чата), разработихме **пълно продукционно контейнеризирано решение**:
+*   **Балансиране на натоварването (Nginx Load Balancer):** Настроихме Nginx като Reverse Proxy и Load Balancer на порт 8000, който автоматично разпределя входящите заявки на принципа на *Round-Robin*.
+*   **Хоризонтално скалиране (3+ Реплики):** Чрез `docker-compose.yml` стартираме **3 реплики на FastAPI контейнера по подразбиране** (които могат да се скалират до 10+ за секунди). Всички сесии, модели и база данни се споделят, което гарантира изключителна скорост, висока наличност и хоризонтална скалируемост на национално ниво.
+*   Добавихме и локални rate limits за защита от спам, а за скрейпинг скалирането – параметризираният `scrape_eop.py` поддържа паралелни бързи пагинации за извличане на активните търгове в София, Варна, Бургас и Стара Загора едновременно.
 
 ---
 
