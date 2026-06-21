@@ -1,5 +1,5 @@
 import { MapContainer, TileLayer, CircleMarker, useMap } from "react-leaflet";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, Fragment } from "react";
 import type { RepairFeature } from "../lib/types";
 import { riskRamp } from "../lib/risk";
 import type { Theme } from "../theme";
@@ -57,20 +57,41 @@ export default function MapView({ features, selected, onSelect, theme, focus }: 
       const isSel = selected === f.properties.ocid;
       const isActive = !!f.properties.is_active;
       const ring = isSel ? (theme === "dark" ? "#fff" : "#0f1720") : isActive ? "#22d3ee" : stroke;
+      const baseRadius = radiusFor(f.properties.value);
+      const r = baseRadius + (isSel ? 3 : 0) + (isActive ? 2 : 0);
+
       return (
-        <CircleMarker
-          key={f.properties.ocid}
-          center={[lat, lon]}
-          radius={radiusFor(f.properties.value) + (isSel ? 3 : 0) + (isActive ? 2 : 0)}
-          pathOptions={{
-            color: ring,
-            fillColor: c,
-            fillOpacity: 0.85,
-            weight: isSel ? 2.5 : isActive ? 2.2 : 0.7,
-            opacity: 1,
-          }}
-          eventHandlers={{ click: () => onSelect(f) }}
-        />
+        <Fragment key={f.properties.ocid}>
+          {/* Soft outer glowing halo for active or selected projects */}
+          {(isSel || isActive) && (
+            <CircleMarker
+              className={isSel ? "map-halo-selected" : "map-halo-active"}
+              center={[lat, lon]}
+              radius={r + (isSel ? 7 : 5)}
+              pathOptions={{
+                color: isSel ? c : "#22d3ee",
+                weight: 0,
+                fillColor: isSel ? c : "#22d3ee",
+                fillOpacity: isSel ? 0.22 : 0.14,
+                opacity: 0,
+              }}
+              eventHandlers={{ click: () => onSelect(f) }}
+            />
+          )}
+          {/* Solid core pin */}
+          <CircleMarker
+            center={[lat, lon]}
+            radius={r}
+            pathOptions={{
+              color: ring,
+              fillColor: c,
+              fillOpacity: 0.9,
+              weight: isSel ? 2.5 : isActive ? 2.0 : 0.7,
+              opacity: 1,
+            }}
+            eventHandlers={{ click: () => onSelect(f) }}
+          />
+        </Fragment>
       );
     });
   }, [features, selected, onSelect, theme, stroke]);
