@@ -50,6 +50,15 @@ export default function DetailCard({ feature, onClose }: { feature: RepairFeatur
   const planned = p.planned_days || 0;
   const isActive = !!p.is_active;
   const left = daysLeft(p.deadline);
+  const deadlineDate = p.deadline ? new Date(p.deadline) : null;
+  const deadlineLabel =
+    p.deadline_raw ||
+    (deadlineDate && !Number.isNaN(deadlineDate.getTime())
+      ? new Intl.DateTimeFormat("bg-BG", { day: "2-digit", month: "short", year: "numeric" }).format(deadlineDate)
+      : "—");
+  const remainingLabel = left == null ? "няма данни" : left >= 0 ? `${left} дни` : "изтекъл";
+  const tenderType = [p.procedure, p.object_type].filter(Boolean).join(" · ") || "Обществена поръчка";
+  const deadlineProgress = left == null ? 0 : left <= 0 ? 0 : Math.max(8, Math.min(100, (Math.min(left, 30) / 30) * 100));
 
   const [analysis, setAnalysis] = useState<AnalyzeResponse | null>(null);
   const [busy, setBusy] = useState(false);
@@ -114,18 +123,27 @@ export default function DetailCard({ feature, onClose }: { feature: RepairFeatur
 
         {isActive ? (
           /* активна поръчка: краен срок + процедура + документи */
-          <div className="detail-pred">
-            <div className="detail-pred-row" style={{ justifyContent: "flex-start", gap: 8 }}>
-              <Clock size={20} weight="duotone" style={{ color: left != null && left <= 7 ? "var(--red)" : "#22d3ee" }} />
+          <div className="deadline-panel">
+            <div className="deadline-panel-head">
+              <span className="deadline-kicker"><Clock size={15} weight="duotone" /> Краен срок</span>
+              <span className="deadline-pill mono">{remainingLabel}</span>
+            </div>
+            <div className="deadline-fields">
               <div>
-                <div className="detail-pred-n mono" style={{ color: left != null && left <= 7 ? "var(--red)" : "#22d3ee" }}>
-                  {left != null && left >= 0 ? `още ${left} дни` : "срокът изтече"}
-                </div>
-                <div className="detail-pred-l">краен срок за оферти: {p.deadline_raw || "—"}</div>
+                <span>Дата</span>
+                <strong>{deadlineLabel}</strong>
+              </div>
+              <div>
+                <span>Остават</span>
+                <strong>{remainingLabel}</strong>
+              </div>
+              <div>
+                <span>Тип</span>
+                <strong>{tenderType}</strong>
               </div>
             </div>
-            <div className="detail-pred-cap" style={{ color: "var(--ink-3)" }}>
-              {[p.procedure, p.object_type].filter(Boolean).join(" · ")}
+            <div className="deadline-progress" aria-hidden="true">
+              <i style={{ width: `${deadlineProgress}%` }} />
             </div>
           </div>
         ) : (

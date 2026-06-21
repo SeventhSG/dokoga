@@ -120,6 +120,18 @@
 .detail-pred-arrow { font-size: 22px; color: var(--ink-3); }
 .detail-pred-cap { margin-top: 8px; font-size: 12px; text-align: right; }
 
+.deadline-panel { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025)); border: 1px solid rgba(255,255,255,0.1); }
+.deadline-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.deadline-kicker { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); }
+.deadline-kicker svg { color: #22d3ee; }
+.deadline-pill { flex: 0 0 auto; padding: 4px 8px; border-radius: 999px; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.18); color: #67e8f9; font-size: 11px; font-weight: 700; line-height: 1; }
+.deadline-fields { display: grid; grid-template-columns: 0.8fr 0.65fr 1.15fr; gap: 12px; align-items: start; }
+.deadline-fields div { min-width: 0; }
+.deadline-fields span { display: block; margin-bottom: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-3); }
+.deadline-fields strong { display: block; font-size: 12.5px; font-weight: 700; line-height: 1.25; color: var(--ink); overflow-wrap: anywhere; }
+.deadline-progress { height: 3px; margin-top: 12px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,0.08); }
+.deadline-progress i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #22d3ee, var(--orange)); opacity: 0.75; }
+
 .detail-ai-btn { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; }
 .detail-ai-btn:hover:not(:disabled) { border-color: var(--orange); color: var(--orange); }
 .detail-ai-btn svg { color: var(--orange); }
