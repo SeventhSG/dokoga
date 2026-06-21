@@ -1,6 +1,6 @@
 import type { ChatResponse, RepairCollection, RepairProps, AnalyzeResponse } from "./types";
 
-const API_BASE = (import.meta.env as Record<string, string | undefined>).VITE_API_BASE ?? "http://localhost:8000";
+const API_BASE = (import.meta.env as Record<string, string | undefined>).VITE_API_BASE ?? (window.location.port === "5173" ? "http://localhost:8000" : "");
 
 export async function loadRepairs(): Promise<RepairCollection> {
   const res = await fetch("/projects.geojson");

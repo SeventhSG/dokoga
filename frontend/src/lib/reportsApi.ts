@@ -9,7 +9,7 @@ export interface CreateResult {
 }
 export interface ConfirmResult { status: string; confirmations: number; }
 
-const API_BASE = (import.meta.env as Record<string, string | undefined>).VITE_API_BASE ?? "http://localhost:8000";
+const API_BASE = (import.meta.env as Record<string, string | undefined>).VITE_API_BASE ?? (window.location.port === "5173" ? "http://localhost:8000" : "");
 let session: Session | null = JSON.parse(localStorage.getItem("dokoga_session") || "null");
 
 function authHeaders(): Record<string, string> {
