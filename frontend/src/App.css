@@ -149,6 +149,8 @@
 
 /* chat */
 .chat { position: absolute; right: 20px; bottom: 20px; width: 380px; max-width: calc(100vw - 40px); display: flex; flex-direction: column; max-height: min(620px, calc(100vh - 40px)); z-index: var(--z-chat); }
+/* detail + chat can overlap on the right edge — near-opaque so neither bleeds through the other */
+.chat, .detail > .glass { background: var(--panel); }
 .chat-h { display: flex; align-items: center; gap: 10px; padding: 15px 18px; border-bottom: 1px solid var(--line); }
 .chat-h .av { width: 30px; height: 30px; border-radius: 9px; background: var(--orange); color: var(--on-orange); display: grid; place-items: center; }
 .chat-h .who { font-weight: 700; font-size: 14px; }
@@ -325,6 +327,16 @@
 .report-page { position: fixed; inset: 0; overflow: hidden; background: var(--bg); }
 
 .btn-report-nav { color: var(--orange); font-weight: 700; }
+
+.map-error {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  top: calc(64px + env(safe-area-inset-top)); z-index: 1400;
+  max-width: calc(100vw - 32px);
+  padding: 11px 16px; border-radius: 999px;
+  font-size: 13px; font-weight: 600; text-align: center; color: var(--ink);
+  background: var(--surface); border: 1px solid var(--glass-brd);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+}
 
 .report-top {
   position: absolute; top: 0; left: 0; right: 0; z-index: 1200;
@@ -525,6 +537,19 @@
   .topbar { top: 10px; right: 10px; }
   .lp-nav { padding: 12px 16px; }
   .pred-form { grid-template-columns: 1fr; }
+
+  /* dropdown can't escape the scrolling filter sheet — render it inline so it never gets clipped */
+  .cselect-list {
+    position: static;
+    margin: 6px 0 0;
+    max-height: 240px;
+    box-shadow: none;
+  }
+
+  /* keep the bottom corners from stacking: drop the filter fab while a sheet/chat/detail is up,
+     and the chat fab while a detail card is open */
+  .stage.bottom-busy .sheet-fab { display: none; }
+  .stage.detail-open .fab { display: none; }
 }
 
 /* --- Премиум 60fps анимации за дишащи ореоли и интеракции при ховър --- */

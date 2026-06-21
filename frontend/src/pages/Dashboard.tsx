@@ -108,7 +108,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="stage">
+    <div className={`stage${selected ? " detail-open" : ""}${selected || chatOpen ? " bottom-busy" : ""}`}>
       <MapView features={features} selected={selected?.properties.ocid ?? null} onSelect={setSelected} theme={theme} focus={focus} />
 
       {sheet && <div className="sheet-backdrop" onClick={() => setSheet(false)} />}

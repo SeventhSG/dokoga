@@ -7,6 +7,8 @@
   --bg-2: #0f141c;
   --surface: #151c26;
   --glass: rgba(18, 25, 35, 0.62);
+  /* near-opaque variant for panels that may overlap (detail + chat) so text never bleeds through */
+  --panel: rgba(16, 22, 31, 0.94);
   --glass-brd: rgba(255, 255, 255, 0.1);
   --line: rgba(255, 255, 255, 0.08);
   --control: rgba(255, 255, 255, 0.05);
@@ -45,6 +47,7 @@
   --bg-2: #e3e8ef;
   --surface: #ffffff;
   --glass: rgba(255, 255, 255, 0.66);
+  --panel: rgba(255, 255, 255, 0.95);
   --glass-brd: rgba(15, 23, 32, 0.1);
   --line: rgba(15, 23, 32, 0.09);
   --control: rgba(15, 23, 32, 0.05);
