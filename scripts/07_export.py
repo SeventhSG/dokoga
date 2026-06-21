@@ -94,15 +94,31 @@ def normalize_locality(s):
     s = re.sub(r"^(гр\.\s*|с\.\s*|град\s+|село\s+|община\s+|общ\.\s*)", "", s, flags=re.IGNORECASE)
     return s.strip()
 
-def coords(ocid, region, locality=None):
+def coords(ocid, region, locality=None, index=0, total=1):
     norm_loc = normalize_locality(locality)
     if norm_loc and norm_loc in GEO_CACHE:
         lat, lon = GEO_CACHE[norm_loc]
-        # Extremely small jitter within the town/village so pins don't stack perfectly
+        if total <= 1:
+            return lat, lon
+
+        # Scale dispersion radius based on total projects in city
+        if total > 15:
+            base_r = 0.016  # Sofia/large cities: up to 2-3km dispersion
+        elif total > 5:
+            base_r = 0.008  # Medium cities: up to 1.2km dispersion
+        else:
+            base_r = 0.003  # Small towns/villages: up to 400m dispersion
+
+        import math
+        angle = index * 2.399963  # Golden angle in radians
+        radius = base_r * math.sqrt(index)
+
         h = int(hashlib.md5(str(ocid).encode()).hexdigest(), 16)
-        jx = ((h % 1000) / 1000 - 0.5) * 0.006
-        jy = (((h // 1000) % 1000) / 1000 - 0.5) * 0.006
-        return lat + jy, lon + jx
+        micro = ((h % 1000) / 1000 - 0.5) * 0.0006
+
+        dy = radius * math.sin(angle) + micro
+        dx = radius * math.cos(angle) + micro
+        return lat + dy, lon + dx
 
     name, lat, lon = NUTS.get(region, ("-", 42.73, 25.48))  # център на БГ при липса
     h = int(hashlib.md5(str(ocid).encode()).hexdigest(), 16)
@@ -144,9 +160,20 @@ con.commit(); con.close()
 
 # ---------- GeoJSON (само обществено-значими строителни дейности за картата) ----------
 mp = df[(df["sector"] != "other") & (df["category"] == "works")].copy()
+
+# Precompute project counts per city to size our spirals dynamically
+loc_counts = mp["locality"].fillna("").map(normalize_locality).value_counts().to_dict()
+loc_indices = {}
+
 feats = []
 for _, r in mp.iterrows():
-    lat, lon = coords(r["ocid"], r["region"], r.get("locality"))
+    loc = r.get("locality")
+    norm_loc = normalize_locality(loc)
+    idx = loc_indices.get(norm_loc, 0)
+    loc_indices[norm_loc] = idx + 1
+    total = loc_counts.get(norm_loc, 1)
+
+    lat, lon = coords(r["ocid"], r["region"], loc, idx, total)
     feats.append({"type":"Feature","geometry":{"type":"Point","coordinates":[round(lon,5),round(lat,5)]},
         "properties":{"ocid":r["ocid"],"title":r["title"],"value":None if pd.isna(r["value"]) else int(r["value"]),
             "region":r["region_name"],"locality":None if pd.isna(r["locality"]) else r["locality"],
