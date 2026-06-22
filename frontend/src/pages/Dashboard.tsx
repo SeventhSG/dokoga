@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowLeft, SlidersHorizontal, X } from "@phosphor-icons/react";
 import { loadRepairs } from "../lib/api";
+import { getRegions } from "../lib/integrityApi";
+import type { GeoJsonObject } from "geojson";
 import type { RepairFeature, ChatFocus } from "../lib/types";
 import { riskLevel } from "../lib/risk";
 import { useTheme } from "../theme";
@@ -42,6 +44,9 @@ export default function Dashboard() {
   const [chatOpen, setChatOpen] = useState(false);
   const [focus, setFocus] = useState<FocusTarget | null>(null);
   const [sheet, setSheet] = useState(false); // мобилен bottom sheet за филтрите
+  const [showRisk, setShowRisk] = useState(false);
+  const [regionGeo, setRegionGeo] = useState<GeoJsonObject | null>(null);
+  const [regionRisk, setRegionRisk] = useState<Record<string, number> | null>(null);
   const focusKey = useRef(0);
   const reduce = useReducedMotion();
 
@@ -49,6 +54,10 @@ export default function Dashboard() {
     loadRepairs()
       .then((c) => setAll(c.features))
       .catch(() => {});
+    getRegions()
+      .then((r) => setRegionRisk(Object.fromEntries(r.regions.map((x) => [x.region_name, x.high_pct]))))
+      .catch(() => {});
+    fetch("/bg_oblasti.geojson").then((r) => r.json()).then(setRegionGeo).catch(() => {});
   }, []);
 
   const regions = useMemo(
@@ -109,7 +118,7 @@ export default function Dashboard() {
 
   return (
     <div className={`stage${selected ? " detail-open" : ""}${selected || chatOpen ? " bottom-busy" : ""}`}>
-      <MapView features={features} selected={selected?.properties.ocid ?? null} onSelect={setSelected} theme={theme} focus={focus} />
+      <MapView features={features} selected={selected?.properties.ocid ?? null} onSelect={setSelected} theme={theme} focus={focus} regionGeo={regionGeo} regionRisk={regionRisk} showRisk={showRisk} />
 
       {sheet && <div className="sheet-backdrop" onClick={() => setSheet(false)} />}
 
@@ -147,7 +156,26 @@ export default function Dashboard() {
               </div>
             </motion.div>
           )}
-          <motion.div {...rail(4)} style={{ position: "relative", zIndex: 10 }}>
+          <motion.div {...rail(4)} style={{ position: "relative", zIndex: 12 }}>
+            <div className="glass panel">
+              <h2 className="panel-h">Корупционен риск</h2>
+              <button
+                className={`sector-pill${showRisk ? " on" : ""}`}
+                onClick={() => setShowRisk((v) => !v)}
+                aria-pressed={showRisk}
+                style={showRisk ? { borderColor: "#ff4d4d", color: "#ff4d4d" } : undefined}
+              >
+                <span style={{ width: 9, height: 9, borderRadius: 2, background: "#ff4d4d" }} />
+                Риск по области
+                <span className="sector-pill-n mono">{showRisk ? "вкл" : "изкл"}</span>
+              </button>
+              <p style={{ margin: "10px 0 0", fontSize: 11, color: "var(--ink-3)", lineHeight: 1.45 }}>
+                Дял високорискови поръчки по област (национален интегритет). Виж пълните разследвания в{" "}
+                <Link to="/analytics" style={{ color: "var(--orange)" }}>Анализи</Link>.
+              </p>
+            </div>
+          </motion.div>
+          <motion.div {...rail(5)} style={{ position: "relative", zIndex: 10 }}>
             <Legend />
           </motion.div>
         </div>

@@ -17,7 +17,12 @@ export interface MlMetrics { roc_auc: number; pr_auc: number; base_rate: number;
 export interface Summary { kpis: Kpis; flags_summary: Record<string, number>; ml: MlMetrics | null; }
 export interface Region {
   region_name: string; contracts: number; value_eur: number; high: number;
-  single_bid_pct: number; avg_risk: number;
+  single_bid_pct: number; high_pct: number; avg_risk: number;
+}
+export interface Case {
+  id: string; supplier: string | null; buyer: string | null; obshtina: string | null;
+  amount_eur: number | null; cpv: string | null; blended: number;
+  level: "low" | "med" | "high"; codes: string[]; reasons: string[];
 }
 export interface Company {
   eik: string; name: string; contracts: number; won_eur: number; buyers: number;
@@ -46,6 +51,7 @@ export const getBuyers = () => getJSON<{ buyers: Buyer[] }>("/integrity/buyers")
 export const getSectors = () => getJSON<{ sectors: Sector[] }>("/integrity/sectors");
 export const getTopRisk = () => getJSON<{ top_risk: TopRisk[] }>("/integrity/top-risk");
 export const getNetwork = () => getJSON<{ network: NetworkLink[] }>("/integrity/network");
+export const getCases = () => getJSON<{ cases: Case[] }>("/integrity/cases");
 
 export async function explain(target: string): Promise<Explain> {
   const res = await fetch(`${API_BASE}/integrity/explain`, {

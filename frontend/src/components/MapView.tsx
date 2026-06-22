@@ -1,9 +1,15 @@
-import { MapContainer, TileLayer, CircleMarker, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, CircleMarker, GeoJSON, useMap } from "react-leaflet";
 import { useEffect, useMemo, Fragment } from "react";
+import type { GeoJsonObject, Feature } from "geojson";
+import type { PathOptions } from "leaflet";
 import type { RepairFeature } from "../lib/types";
 import { riskRamp } from "../lib/risk";
 import type { Theme } from "../theme";
 import TrackpadPan from "./TrackpadPan";
+
+// corruption-risk choropleth color by share of high-risk contracts in the област
+const hotColor = (pct: number | undefined) =>
+  pct == null ? "rgba(150,160,175,0.22)" : pct >= 6 ? "#ff4d4d" : pct >= 3 ? "#ffb020" : "#2bd46a";
 
 export interface FocusTarget {
   lat: number;
@@ -38,10 +44,18 @@ interface Props {
   onSelect: (f: RepairFeature) => void;
   theme: Theme;
   focus: FocusTarget | null;
+  regionGeo?: GeoJsonObject | null;
+  regionRisk?: Record<string, number> | null; // region_name -> high_pct
+  showRisk?: boolean;
 }
 
-export default function MapView({ features, selected, onSelect, theme, focus }: Props) {
+export default function MapView({ features, selected, onSelect, theme, focus, regionGeo, regionRisk, showRisk }: Props) {
   const stroke = theme === "dark" ? "rgba(255,255,255,0.5)" : "rgba(15,23,32,0.4)";
+
+  const riskStyle = (f?: Feature): PathOptions => ({
+    fillColor: hotColor(regionRisk?.[(f?.properties as { region_name?: string })?.region_name ?? ""]),
+    weight: 1, color: theme === "dark" ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.7)", fillOpacity: 0.5,
+  });
 
   const markers = useMemo(() => {
     // draw high-risk last so red dots sit on top; активните - най-отгоре
@@ -56,39 +70,37 @@ export default function MapView({ features, selected, onSelect, theme, focus }: 
       const c = riskRamp(f.properties.risk);
       const isSel = selected === f.properties.ocid;
       const isActive = !!f.properties.is_active;
-      const ring = isSel ? (theme === "dark" ? "#fff" : "#0f1720") : isActive ? "#22d3ee" : stroke;
+      // uniform dots: every pin colored by risk, sized by value, same stroke. Only selection changes
+      // the core style; an ongoing procedure adds a subtle pulse (more info), not a different dot.
+      const ring = isSel ? (theme === "dark" ? "#fff" : "#0f1720") : stroke;
       const baseRadius = radiusFor(f.properties.value);
-      const r = baseRadius + (isSel ? 3 : 0) + (isActive ? 2 : 0);
+      const r = baseRadius + (isSel ? 3 : 0);
 
       return (
         <Fragment key={f.properties.ocid}>
-          {/* Soft outer glowing halo for active or selected projects */}
-          {(isSel || isActive) && (
+          {isSel && (
             <CircleMarker
-              className={isSel ? "map-halo-selected" : "map-halo-active"}
+              className="map-halo-selected"
               center={[lat, lon]}
-              radius={r + (isSel ? 7 : 5)}
-              pathOptions={{
-                color: isSel ? c : "#22d3ee",
-                weight: 0,
-                fillColor: isSel ? c : "#22d3ee",
-                fillOpacity: isSel ? 0.22 : 0.14,
-                opacity: 0,
-              }}
+              radius={r + 7}
+              pathOptions={{ color: c, weight: 0, fillColor: c, fillOpacity: 0.22, opacity: 0 }}
               eventHandlers={{ click: () => onSelect(f) }}
             />
           )}
-          {/* Solid core pin */}
+          {isActive && !isSel && (
+            <CircleMarker
+              className="map-halo-active"
+              center={[lat, lon]}
+              radius={r + 4}
+              pathOptions={{ color: "#5bc8d6", weight: 0, fillColor: "#5bc8d6", fillOpacity: 0.13, opacity: 0 }}
+              eventHandlers={{ click: () => onSelect(f) }}
+            />
+          )}
+          {/* Solid core pin - identical style for every project */}
           <CircleMarker
             center={[lat, lon]}
             radius={r}
-            pathOptions={{
-              color: ring,
-              fillColor: c,
-              fillOpacity: 0.9,
-              weight: isSel ? 2.5 : isActive ? 2.0 : 0.7,
-              opacity: 1,
-            }}
+            pathOptions={{ color: ring, fillColor: c, fillOpacity: 0.9, weight: isSel ? 2.5 : 0.7, opacity: 1 }}
             eventHandlers={{ click: () => onSelect(f) }}
           />
         </Fragment>
@@ -114,6 +126,9 @@ export default function MapView({ features, selected, onSelect, theme, focus }: 
         attribution='&copy; OpenStreetMap, &copy; CARTO · данни: data.egov.bg'
         subdomains="abcd"
       />
+      {showRisk && regionGeo && (
+        <GeoJSON key={`risk-${theme}`} data={regionGeo} style={riskStyle} />
+      )}
       {markers}
       <TrackpadPan />
       <Flyer focus={focus} />
