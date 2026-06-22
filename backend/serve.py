@@ -17,6 +17,7 @@ FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "fr
 import agent
 import predictor
 import reports_api
+import integrity
 
 # ---- защита: CORS allowlist (конфигурируем) ----
 ORIGINS = [
@@ -32,7 +33,7 @@ RATE_N = int(os.environ.get("RATE_LIMIT", "30"))   # заявки
 RATE_WINDOW = 60                                    # секунди
 _hits: dict[str, deque] = defaultdict(deque)
 _GUARDED = {"/chat", "/predict", "/analyze", "/reports",
-            "/auth/request", "/auth/verify"}
+            "/auth/request", "/auth/verify", "/integrity/explain"}
 
 app = FastAPI(title="Докога? API", version="0.2")
 app.add_middleware(
@@ -136,6 +137,74 @@ def analyze(inp: AnalyzeIn):
         return agent.analyze(facts)
     except Exception:
         return {"analysis": "AI анализът не успя. Опитай пак.", "drivers": []}
+
+class ExplainIn(BaseModel):
+    target: str = Field(min_length=1, max_length=120)
+
+
+@app.get("/integrity/summary")
+def integrity_summary():
+    try:
+        return integrity.summary()
+    except Exception:
+        return {"error": "integrity summary failed"}
+
+
+@app.get("/integrity/regions")
+def integrity_regions():
+    try:
+        return integrity.regions()
+    except Exception:
+        return {"regions": [], "coverage_pct": 0}
+
+
+@app.get("/integrity/companies")
+def integrity_companies():
+    try:
+        return {"companies": integrity.companies()}
+    except Exception:
+        return {"companies": []}
+
+
+@app.get("/integrity/buyers")
+def integrity_buyers():
+    try:
+        return {"buyers": integrity.buyers()}
+    except Exception:
+        return {"buyers": []}
+
+
+@app.get("/integrity/sectors")
+def integrity_sectors():
+    try:
+        return {"sectors": integrity.sectors()}
+    except Exception:
+        return {"sectors": []}
+
+
+@app.get("/integrity/top-risk")
+def integrity_top_risk():
+    try:
+        return {"top_risk": integrity.top_risk()}
+    except Exception:
+        return {"top_risk": []}
+
+
+@app.get("/integrity/network")
+def integrity_network():
+    try:
+        return {"network": integrity.network()}
+    except Exception:
+        return {"network": []}
+
+
+@app.post("/integrity/explain")
+def integrity_explain(inp: ExplainIn):
+    try:
+        return integrity.explain(_clean(inp.target))
+    except Exception:
+        return {"error": "Обяснението не успя.", "bundle": None, "narrative": None}
+
 
 # SPA fallback — serve index.html for client-side routes (added by Hermes)
 @app.middleware('http')

@@ -1,0 +1,9 @@
+{
+ "n": 40347,
+ "label": "materially_modified(has_annex)",
+ "base_rate": 0.07445411059062632,
+ "roc_auc": 0.859665729504436,
+ "pr_auc": 0.46643615442697073,
+ "leak_free": true,
+ "note": "КЗК annulment half deferred; blended at 30% with deterministic index, LLM-explains-only"
+}
