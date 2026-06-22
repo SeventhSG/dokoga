@@ -198,6 +198,14 @@ def integrity_network():
         return {"network": []}
 
 
+@app.get("/integrity/cases")
+def integrity_cases():
+    try:
+        return {"cases": integrity.cases()}
+    except Exception:
+        return {"cases": []}
+
+
 @app.post("/integrity/explain")
 def integrity_explain(inp: ExplainIn):
     try:

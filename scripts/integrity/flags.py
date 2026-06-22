@@ -43,35 +43,43 @@ def short_tender_window(con, min_days=14):
     return n
 
 
-def price_anomaly_cpv(con, min_peers=15, factor=3.0, cpv_prefix=5):
+def price_anomaly_cpv(con, min_peers=15, factor=3.0, cpv_prefix=5, est_factor=3.0):
     n = 0
     buckets = {}
-    for r in con.execute("SELECT id,cpv,amount_eur FROM contracts WHERE amount_eur IS NOT NULL AND amount_eur>0 AND cpv IS NOT NULL"):
-        buckets.setdefault(str(r["cpv"])[:cpv_prefix], []).append((r["id"], r["amount_eur"]))
+    for r in con.execute("SELECT id,cpv,amount_eur,estimated_value FROM contracts "
+                         "WHERE amount_eur IS NOT NULL AND amount_eur>0 AND cpv IS NOT NULL"):
+        buckets.setdefault(str(r["cpv"])[:cpv_prefix], []).append((r["id"], r["amount_eur"], r["estimated_value"]))
     for cpv, rows in buckets.items():
         if len(rows) < min_peers:
             continue
-        vals = sorted(v for _, v in rows)
+        vals = sorted(v for _, v, _ in rows)
         med = statistics.median(vals)
         p90 = vals[int(0.9 * (len(vals) - 1))]
         thr = max(factor * med, p90)
-        for cid, v in rows:
+        for cid, v, est in rows:
             if v > thr and med > 0:
+                # guard against framework/supply false positives: a contract within ~est_factor of its
+                # OWN declared budget is large-but-budgeted, not overpriced. Only flag if it also blows
+                # past its own estimate (or has none).
+                if est and est > 0 and v <= est_factor * est:
+                    continue
                 _add(con, "contract", cid, "price_anomaly_cpv", min(1.0, (v / med) / 10),
                      {"cpv": cpv, "amount_eur": round(v), "cpv_median_eur": round(med),
-                      "cpv_p90_eur": round(p90), "ratio_to_median": round(v / med, 1), "peers": len(rows)}); n += 1
+                      "ratio_to_median": round(v / med, 1), "peers": len(rows)}); n += 1
     return n
 
 
 def annex_value_inflation(con, ratio=0.25):
+    # per-annex inflation (value_before -> value_after on the SAME modification), max per contract.
+    # Avoids the earlier bug of summing every annex under a УНП against one contract's value.
     n = 0
-    q = ("SELECT a.unp, SUM(COALESCE(a.value_delta,0)) delta, c.id cid, c.amount_eur amt "
-         "FROM annexes a JOIN contracts c ON a.unp=c.unp GROUP BY a.unp")
+    q = ("SELECT c.id cid, MAX(CASE WHEN a.value_before>0 AND a.value_after IS NOT NULL "
+         "THEN (a.value_after-a.value_before)/a.value_before END) infl "
+         "FROM annexes a JOIN contracts c ON a.unp=c.unp WHERE a.value_before>0 GROUP BY c.id")
     for r in con.execute(q):
-        if r["amt"] and r["delta"] and r["amt"] > 0 and r["delta"] / r["amt"] >= ratio:
-            _add(con, "contract", r["cid"], "annex_value_inflation", min(1.0, r["delta"] / r["amt"]),
-                 {"cumulative_delta_native": round(r["delta"]), "contract_amount_eur": round(r["amt"]),
-                  "inflation_ratio": round(r["delta"] / r["amt"], 2)}); n += 1
+        if r["infl"] is not None and r["infl"] >= ratio:
+            _add(con, "contract", r["cid"], "annex_value_inflation", min(1.0, r["infl"]),
+                 {"max_annex_inflation": round(r["infl"], 2)}); n += 1
     return n
 
 
