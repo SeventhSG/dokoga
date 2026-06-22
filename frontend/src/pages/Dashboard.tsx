@@ -157,6 +157,7 @@ export default function Dashboard() {
         <Link to="/" className="btn">
           <ArrowLeft size={15} weight="bold" /> Начало
         </Link>
+        <Link to="/analytics" className="btn">Анализи</Link>
         <Link to="/report" className="btn btn-report-nav">⚠ Сигнали</Link>
         <ThemeToggle theme={theme} onToggle={toggle} />
       </div>
