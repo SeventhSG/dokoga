@@ -206,6 +206,31 @@ def integrity_cases():
         return {"cases": []}
 
 
+@app.get("/integrity/companies-ranked")
+def integrity_companies_ranked():
+    try:
+        return {"companies": integrity.companies_ranked()}
+    except Exception:
+        return {"companies": []}
+
+
+@app.get("/integrity/company")
+def integrity_company(eik: str):
+    try:
+        d = integrity.company_detail(_clean(eik))
+        return d or {"error": "not found"}
+    except Exception:
+        return {"error": "company detail failed"}
+
+
+@app.get("/integrity/person")
+def integrity_person(key: str):
+    try:
+        return integrity.person_detail(_clean(key))
+    except Exception:
+        return {"error": "person detail failed"}
+
+
 @app.post("/integrity/explain")
 def integrity_explain(inp: ExplainIn):
     try:
