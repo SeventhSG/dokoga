@@ -19,9 +19,6 @@ const TILES: Record<string, string> = {
 const LVL: Record<string, string> = { low: "нисък", med: "среден", high: "висок" };
 const compactEur = (n: number) =>
   n >= 1e9 ? "€" + (n / 1e9).toFixed(1) + " млрд" : n >= 1e6 ? "€" + (n / 1e6).toFixed(1) + " млн" : fmtEur(n);
-// hotspot color by share of high-risk contracts (corruption-risk density)
-const hotColor = (r?: Region) =>
-  !r || !r.contracts ? "rgba(150,160,175,0.25)" : r.high_pct >= 6 ? "#ff4d4d" : r.high_pct >= 3 ? "#ffb020" : "#2bd46a";
 
 export default function Analytics() {
   const { theme, toggle } = useTheme();
@@ -52,16 +49,28 @@ export default function Analytics() {
     () => [...buyers].filter((b) => b.contracts >= 5).sort((a, b) => b.single_bid_pct - a.single_bid_pct).slice(0, 12),
     [buyers]
   );
-  const worstCos = useMemo(() => [...companies].sort((a, b) => b.flags - a.flags).slice(0, 12), [companies]);
+  const worstCos = useMemo(
+    () => [...companies].sort((a, b) => b.flags - a.flags || b.won_eur - a.won_eur).slice(0, 9),
+    [companies]
+  );
+  // quantile thresholds so the map differentiates (relative risk), never all-green
+  const riskThr = useMemo<[number, number]>(() => {
+    const xs = regions.filter((r) => r.contracts > 0).map((r) => r.risk_index).sort((a, b) => a - b);
+    if (!xs.length) return [101, 101];
+    const q = (p: number) => xs[Math.floor(p * (xs.length - 1))];
+    return [q(0.34), q(0.67)];
+  }, [regions]);
+  const regColor = (r?: Region) =>
+    !r || !r.contracts ? "rgba(150,160,175,0.25)" : r.risk_index >= riskThr[1] ? "#ff4d4d" : r.risk_index >= riskThr[0] ? "#ffb020" : "#2bd46a";
 
   const style = (f?: Feature): PathOptions => ({
-    fillColor: hotColor(byName[(f?.properties as { region_name?: string })?.region_name ?? ""]),
+    fillColor: regColor(byName[(f?.properties as { region_name?: string })?.region_name ?? ""]),
     weight: 1, color: theme === "dark" ? "#0b0f15" : "#fff", fillOpacity: 0.78,
   });
   const onEach = (f: Feature, layer: Layer) => {
     const n = (f.properties as { region_name: string }).region_name, r = byName[n];
-    layer.bindTooltip(`${n} - ${r && r.contracts ? r.high_pct + "% високорискови" : "няма данни"}`, { sticky: true });
-    layer.on({ click: () => setSel(r ?? { region_name: n, contracts: 0, value_eur: 0, high: 0, single_bid_pct: 0, high_pct: 0, avg_risk: 0 }) });
+    layer.bindTooltip(`${n} - ${r && r.contracts ? r.risk_index + "% от парите през единствен участник" : "няма данни"}`, { sticky: true });
+    layer.on({ click: () => setSel(r ?? { region_name: n, contracts: 0, value_eur: 0, high: 0, single_bid_pct: 0, risk_index: 0, high_pct: 0, avg_risk: 0 }) });
   };
 
   async function doExplain(target: string) {
@@ -108,8 +117,9 @@ export default function Analytics() {
 
         <section className="ia-grid2">
           <div className="glass ia-mapcard">
-            <div className="ia-cap"><h2 className="display">Горещи точки на риска</h2><span>дял високорискови договори · покритие {coverage}%</span></div>
-            <MapContainer className="ia-map" center={[42.73, 25.4]} zoom={7} scrollWheelZoom={false} zoomControl={false} attributionControl>
+            <div className="ia-cap"><h2 className="display">Горещи точки на риска</h2><span>дял от парите през единствен участник (относително) · покритие {coverage}%</span></div>
+            <MapContainer className="ia-map" center={[42.73, 25.4]} zoom={7} zoomControl={false}
+              scrollWheelZoom={false} doubleClickZoom={false} touchZoom={false} boxZoom={false} keyboard={false} attributionControl>
               <TileLayer key={theme} url={TILES[theme]} attribution="&copy; OpenStreetMap &copy; CARTO" subdomains="abcd" />
               {geo && regions.length > 0 && <GeoJSON key={theme + regions.length} data={geo} style={style} onEachFeature={onEach} />}
             </MapContainer>
@@ -124,17 +134,37 @@ export default function Analytics() {
             {sel && sel.contracts === 0 && <p className="ia-muted">Няма картирани договори за тази област.</p>}
             {sel && sel.contracts > 0 && (
               <div className="ia-stats">
-                <div><span>Високорискови</span><b className="mono t-red">{sel.high_pct}%</b></div>
+                <div><span>Пари през единствен участник</span><b className="mono t-red">{sel.risk_index}%</b></div>
+                <div><span>Единичен участник (брой)</span><b className="mono">{sel.single_bid_pct}%</b></div>
                 <div><span>Договори</span><b className="mono">{fmtNum(sel.contracts)}</b></div>
                 <div><span>Стойност</span><b className="mono">{fmtEur(sel.value_eur)}</b></div>
-                <div><span>Единичен участник</span><b className="mono">{sel.single_bid_pct}%</b></div>
               </div>
             )}
           </aside>
         </section>
 
         <section>
-          <div className="ia-cap"><h2 className="display"><Sparkle size={20} weight="fill" /> Разследвания</h2><span>{cases.length} най-рискови случая, с доказателства</span></div>
+          <div className="ia-cap"><h2 className="display"><Buildings size={20} weight="fill" /> Най-флагнати фирми</h2><span>най-много червени флагове, с AI разбор</span></div>
+          <div className="ia-feed">
+            {worstCos.map((c) => {
+              const t = "company:" + c.eik, e = exp[t];
+              return (
+                <article className="glass ia-case" key={c.eik}>
+                  <div className="ia-party"><b>{c.name}</b></div>
+                  <small className="ia-eik mono">ЕИК {c.eik}</small>
+                  <p className="ia-desc">Спечелил <b>{compactEur(c.won_eur)}</b> по {fmtNum(c.contracts)} договора от {fmtNum(c.buyers)} възложителя · {c.single_bid_pct}% единствен участник · <span className="t-red">{fmtNum(c.flags)} флага</span></p>
+                  <button className="btn btn-primary ia-ai" onClick={() => doExplain(t)} disabled={e?.loading}>
+                    <Sparkle size={14} weight="fill" /> {e?.loading ? "Анализ…" : "AI разбор"}
+                  </button>
+                  {e && !e.loading && <p className="ia-narr">{e.text}</p>}
+                </article>
+              );
+            })}
+          </div>
+        </section>
+
+        <section>
+          <div className="ia-cap"><h2 className="display"><Sparkle size={20} weight="fill" /> Разследвания</h2><span>{cases.length} материални случая (по пари и риск), с доказателства</span></div>
           <div className="ia-feed">
             {cases.map((c) => {
               const e = exp[c.id];
@@ -158,16 +188,18 @@ export default function Analytics() {
           </div>
         </section>
 
-        {network.length > 0 && (
-          <section>
-            <div className="ia-cap"><h2 className="display"><ShareNetwork size={20} weight="fill" /> Скрита обща собственост</h2><span>едно лице зад няколко печелили фирми</span></div>
+        <section>
+          <div className="ia-cap"><h2 className="display"><ShareNetwork size={20} weight="fill" /> Скрита обща собственост</h2><span>лице зад няколко печелили (и флагнати) фирми</span></div>
+          {network.length === 0 ? (
+            <p className="ia-muted">Графът на собствеността е с частично покритие (нужен е пълен Търговски регистър). В текущия слой няма рискови връзки между флагнати фирми с общ собственик.</p>
+          ) : (
             <div className="ia-feed">
               {network.map((n, i) => {
                 const e = exp["shared-owner"];
                 return (
                   <article className="glass ia-case" key={i}>
                     <div className="ia-party"><b>{n.person}</b> <span className="ia-chip">{n.id_type}</span></div>
-                    <p className="ia-muted" style={{ margin: ".4rem 0" }}>контролира {n.count} печелили фирми:</p>
+                    <p className="ia-desc">{n.count} печелили фирми · общо <b>{compactEur(n.won_eur)}</b> · <span className="t-red">{fmtNum(n.flags)} флага</span></p>
                     <ul className="ia-reasons">{n.companies.map((co, j) => <li key={j}>{co.name ?? co.eik}</li>)}</ul>
                     <button className="btn btn-primary ia-ai" onClick={() => doExplain("shared-owner")} disabled={e?.loading}>
                       <Sparkle size={14} weight="fill" /> {e?.loading ? "Анализ…" : "AI разбор"}
@@ -177,22 +209,12 @@ export default function Analytics() {
                 );
               })}
             </div>
-          </section>
-        )}
+          )}
+        </section>
 
-        <section className="ia-grid2">
+        <section>
           <div className="glass ia-list">
-            <div className="ia-cap"><h2 className="display"><Buildings size={18} weight="fill" /> Най-флагнати фирми</h2></div>
-            {worstCos.map((c, i) => (
-              <div className="ia-row" key={c.eik}>
-                <span className="ia-rank mono">{i + 1}</span>
-                <span className="ia-row-main"><b>{c.name}</b><small className="mono">ЕИК {c.eik}</small></span>
-                <span className="ia-row-n mono">{fmtNum(c.flags)} флага · {c.single_bid_pct}% ед.</span>
-              </div>
-            ))}
-          </div>
-          <div className="glass ia-list">
-            <div className="ia-cap"><h2 className="display"><Users size={18} weight="fill" /> Възложители с най-висок единичен участник</h2></div>
+            <div className="ia-cap"><h2 className="display"><Users size={18} weight="fill" /> Възложители с най-висок единичен участник</h2><span>мин. 5 договора</span></div>
             {worstBuyers.map((b, i) => (
               <div className="ia-row" key={b.eik}>
                 <span className="ia-rank mono">{i + 1}</span>
@@ -252,6 +274,8 @@ const CSS = `
 .ia-party{font-size:.92rem;color:var(--ink-2);line-height:1.4}.ia-party b{color:var(--ink)}
 .ia-arrow{color:var(--orange);font-weight:700}
 .ia-obsht{display:inline-block;margin-top:.4rem;font-size:.74rem;font-weight:600;color:var(--cool);background:rgba(91,200,214,.12);border-radius:6px;padding:.1rem .45rem}
+.ia-eik{color:var(--ink-3);font-size:.72rem}
+.ia-desc{font-size:.85rem;color:var(--ink-2);line-height:1.5;margin:.5rem 0 .2rem}.ia-desc b{color:var(--ink)}
 .ia-chip{display:inline-block;background:var(--control);color:var(--ink-3);border-radius:6px;padding:.05rem .35rem;font-size:.68rem;font-family:"JetBrains Mono",monospace}
 .ia-reasons{list-style:none;margin:.6rem 0 .2rem;padding:0;display:flex;flex-direction:column;gap:.3rem}
 .ia-reasons li{font-size:.84rem;color:var(--ink-2);padding-left:1rem;position:relative}

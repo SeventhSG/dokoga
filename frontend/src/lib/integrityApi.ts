@@ -17,7 +17,7 @@ export interface MlMetrics { roc_auc: number; pr_auc: number; base_rate: number;
 export interface Summary { kpis: Kpis; flags_summary: Record<string, number>; ml: MlMetrics | null; }
 export interface Region {
   region_name: string; contracts: number; value_eur: number; high: number;
-  single_bid_pct: number; high_pct: number; avg_risk: number;
+  single_bid_pct: number; risk_index: number; high_pct: number; avg_risk: number;
 }
 export interface Case {
   id: string; supplier: string | null; buyer: string | null; obshtina: string | null;
@@ -38,7 +38,8 @@ export interface TopRisk {
   cpv: string | null; blended: number; codes: string[];
 }
 export interface NetworkLink {
-  person: string; id_type: string; count: number; companies: { eik: string; name: string | null }[];
+  person: string; id_type: string; count: number; won_eur: number; flags: number;
+  companies: { eik: string; name: string | null }[];
 }
 export interface Explain {
   bundle: Record<string, unknown> | null; narrative: string | null; error?: string;
