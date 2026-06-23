@@ -11,6 +11,14 @@ DATA = os.path.abspath(os.path.join(HERE, "..", "data", "app"))
 DB_PATH = os.path.join(DATA, "integrity.sqlite")
 GEO = os.path.join(DATA, "bg_oblasti.geojson")
 
+# The raw .sqlite is gitignored (large); the repo ships a gzipped copy. On a fresh checkout/deploy
+# inflate it once so the analytics endpoints have data without any manual step.
+if not os.path.exists(DB_PATH) and os.path.exists(DB_PATH + ".gz"):
+    import gzip
+    import shutil
+    with gzip.open(DB_PATH + ".gz", "rb") as _fin, open(DB_PATH, "wb") as _fout:
+        shutil.copyfileobj(_fin, _fout)
+
 
 def _con():
     c = sqlite3.connect(DB_PATH)
