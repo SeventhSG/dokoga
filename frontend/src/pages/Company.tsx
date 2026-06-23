@@ -152,8 +152,8 @@ const CSS = `
 .cp-bars{display:grid;gap:.5rem}
 .cp-barrow{display:grid;grid-template-columns:54px 1fr auto;align-items:center;gap:.6rem;font-size:.82rem}
 .cp-year{color:var(--ink-3)}
-.cp-track{background:rgba(255,106,43,.14);border-radius:6px;height:14px;overflow:hidden}
-.cp-fill{height:100%;min-width:3px;background:linear-gradient(90deg,var(--orange-2),var(--orange));border-radius:6px;box-shadow:0 0 8px rgba(255,106,43,.4)}
+.cp-track{display:block;width:100%;background:rgba(255,106,43,.14);border-radius:6px;height:14px;overflow:hidden}
+.cp-fill{display:block;height:100%;min-width:3px;background:linear-gradient(90deg,var(--orange-2),var(--orange));border-radius:6px;box-shadow:0 0 8px rgba(255,106,43,.45)}
 .cp-bn{color:var(--ink-2);white-space:nowrap}
 .cp-chips{display:flex;flex-wrap:wrap;gap:.4rem}
 .cp-ai{display:inline-flex;align-items:center;gap:.35rem;font-size:.82rem;padding:.5rem .9rem}
