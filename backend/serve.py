@@ -18,6 +18,7 @@ import agent
 import predictor
 import reports_api
 import integrity
+import boss_battle
 
 # ---- защита: CORS allowlist (конфигурируем) ----
 ORIGINS = [
@@ -28,12 +29,52 @@ ORIGINS = [
     if o.strip()
 ]
 
-# ---- защита: rate limit (per IP) ----
-RATE_N = int(os.environ.get("RATE_LIMIT", "30"))   # заявки
-RATE_WINDOW = 60                                    # секунди
+# ---- защита: rate limit (per РЕАЛНО клиентско IP, дори зад Cloudflare) ----
+RATE_N = int(os.environ.get("RATE_LIMIT", "30"))         # общи заявки/мин/IP
+LLM_RATE_N = int(os.environ.get("LLM_RATE_LIMIT", "10")) # скъпи LLM заявки/мин/IP
+RATE_WINDOW = 60                                          # секунди
 _hits: dict[str, deque] = defaultdict(deque)
+_llm_hits: dict[str, deque] = defaultdict(deque)
 _GUARDED = {"/chat", "/predict", "/analyze", "/reports",
-            "/auth/request", "/auth/verify", "/integrity/explain"}
+            "/auth/request", "/auth/verify", "/integrity/explain",
+            "/boss-battle/generate"}
+_LLM = {"/chat", "/analyze", "/boss-battle/generate"}   # викат външен LLM → отделен, по-строг лимит
+
+# Зад Cloudflare request.client.host е edge IP-то на CF (еднакво за всички).
+# Реалното клиентско IP идва в CF-Connecting-IP / X-Forwarded-For.
+def _client_ip(request: Request) -> str:
+    cf = request.headers.get("cf-connecting-ip")
+    if cf:
+        return cf.strip()
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "anon"
+
+
+def _too_many(store: dict, ip: str, limit: int, now: float) -> bool:
+    dq = store[ip]
+    while dq and now - dq[0] > RATE_WINDOW:
+        dq.popleft()
+    if len(dq) >= limit:
+        return True
+    dq.append(now)
+    return False
+
+
+# CSP: само self + CARTO basemap тайлове за картата (Leaflet ги тегли като <img>)
+CSP = (
+    "default-src 'self'; "
+    "script-src 'self'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://*.cartocdn.com; "
+    "font-src 'self' data:; "
+    "connect-src 'self'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "object-src 'none'; "
+    "frame-ancestors 'none'"
+)
 
 app = FastAPI(title="Докога? API", version="0.2")
 app.add_middleware(
@@ -51,20 +92,23 @@ app.include_router(reports_api.router)
 async def guard(request: Request, call_next):
     p = request.url.path
     if p in _GUARDED or (p.startswith("/reports/") and p.endswith("/confirm")):
-        ip = request.client.host if request.client else "anon"
+        ip = _client_ip(request)
         now = time.time()
-        dq = _hits[ip]
-        while dq and now - dq[0] > RATE_WINDOW:
-            dq.popleft()
-        if len(dq) >= RATE_N:
+        if p in _LLM and _too_many(_llm_hits, ip, LLM_RATE_N, now):
+            return JSONResponse(
+                {"error": "Твърде много AI заявки. Опитай пак след минута."}, status_code=429
+            )
+        if _too_many(_hits, ip, RATE_N, now):
             return JSONResponse(
                 {"error": "Твърде много заявки. Опитай пак след малко."}, status_code=429
             )
-        dq.append(now)
     resp = await call_next(request)
     resp.headers["X-Content-Type-Options"] = "nosniff"
     resp.headers["X-Frame-Options"] = "DENY"
     resp.headers["Referrer-Policy"] = "no-referrer"
+    resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+    resp.headers["Content-Security-Policy"] = CSP
+    resp.headers["Permissions-Policy"] = "geolocation=(self), microphone=(), camera=()"
     return resp
 
 
@@ -237,6 +281,47 @@ def integrity_explain(inp: ExplainIn):
         return integrity.explain(_clean(inp.target))
     except Exception:
         return {"error": "Обяснението не успя.", "bundle": None, "narrative": None}
+
+
+# ── BOSS BATTLE ──────────────────────────────────────────────────────────────
+class BossBattleIn(BaseModel):
+    teacher_name: str = Field(min_length=2, max_length=80)
+    subject: str = Field(min_length=2, max_length=60)
+    grade: str = Field(default="11 клас", max_length=20)
+    style: str = Field(default="", max_length=400)
+    exam_notes: str = Field(default="", max_length=1000)
+    num_questions: int = Field(default=8, ge=4, le=12)
+    time_limit_minutes: int = Field(default=30, ge=10, le=90)
+
+
+class BossBattleScoreIn(BaseModel):
+    questions: list
+    answers: dict
+    passing_score: int = Field(default=60, ge=0, le=100)
+
+
+@app.post("/boss-battle/generate")
+def boss_battle_generate(inp: BossBattleIn):
+    try:
+        return boss_battle.generate_boss_battle(
+            teacher_name=_clean(inp.teacher_name),
+            subject=_clean(inp.subject),
+            grade=_clean(inp.grade),
+            style=_clean(inp.style) if inp.style else "",
+            exam_notes=_clean(inp.exam_notes) if inp.exam_notes else "",
+            num_questions=inp.num_questions,
+            time_limit_minutes=inp.time_limit_minutes,
+        )
+    except Exception as e:
+        return {"error": f"Генерирането не успя: {e}"}
+
+
+@app.post("/boss-battle/score")
+def boss_battle_score(inp: BossBattleScoreIn):
+    try:
+        return boss_battle.score_exam(inp.questions, inp.answers)
+    except Exception as e:
+        return {"error": f"Оценяването не успя: {e}"}
 
 
 # SPA fallback — serve index.html for client-side routes (added by Hermes)

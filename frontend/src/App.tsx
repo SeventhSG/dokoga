@@ -5,6 +5,7 @@ import Report from "./pages/Report";
 import Analytics from "./pages/Analytics";
 import Company from "./pages/Company";
 import Person from "./pages/Person";
+import BossBattle from "./pages/BossBattle";
 import "./App.css";
 
 export default function App() {
@@ -16,6 +17,7 @@ export default function App() {
       <Route path="/analytics" element={<Analytics />} />
       <Route path="/company/:eik" element={<Company />} />
       <Route path="/person/:hash" element={<Person />} />
+      <Route path="/boss-battle" element={<BossBattle />} />
     </Routes>
   );
 }
