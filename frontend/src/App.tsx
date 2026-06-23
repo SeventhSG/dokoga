@@ -3,6 +3,8 @@ import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import Report from "./pages/Report";
 import Analytics from "./pages/Analytics";
+import Company from "./pages/Company";
+import Person from "./pages/Person";
 import "./App.css";
 
 export default function App() {
@@ -12,6 +14,8 @@ export default function App() {
       <Route path="/app" element={<Dashboard />} />
       <Route path="/report" element={<Report />} />
       <Route path="/analytics" element={<Analytics />} />
+      <Route path="/company/:eik" element={<Company />} />
+      <Route path="/person/:hash" element={<Person />} />
     </Routes>
   );
 }

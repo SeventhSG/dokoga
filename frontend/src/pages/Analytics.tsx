@@ -7,10 +7,12 @@ import { ArrowLeft, Sparkle, Buildings, Users, ShareNetwork } from "@phosphor-ic
 import { useTheme } from "../theme";
 import ThemeToggle from "../components/ThemeToggle";
 import {
-  getSummary, getRegions, getCases, getNetwork, getCompanies, getBuyers, explain,
+  getSummary, getRegions, getCases, getNetwork, getCompanies, getBuyers, getCompaniesRanked, explain,
   fmtEur, fmtNum,
-  type Summary, type Region, type Case, type NetworkLink, type Company, type Buyer,
+  type Summary, type Region, type Case, type NetworkLink, type Company, type Buyer, type RankedCompany,
 } from "../lib/integrityApi";
+
+const lvlPct = (p: number) => (p >= 66 ? "high" : p >= 33 ? "med" : "low");
 
 const TILES: Record<string, string> = {
   dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
@@ -33,6 +35,8 @@ export default function Analytics() {
   const [sel, setSel] = useState<Region | null>(null);
   const [exp, setExp] = useState<Record<string, { loading: boolean; text: string }>>({});
   const [err, setErr] = useState(false);
+  const [ranked, setRanked] = useState<RankedCompany[]>([]);
+  const [q, setQ] = useState("");
 
   useEffect(() => {
     Promise.all([getSummary(), getRegions(), getCases(), getNetwork(), getCompanies(), getBuyers()])
@@ -40,8 +44,14 @@ export default function Analytics() {
         setSum(s); setRegions(r.regions); setCoverage(r.coverage_pct);
         setCases(c.cases); setNetwork(n.network); setCompanies(co.companies); setBuyers(b.buyers);
       }).catch(() => setErr(true));
+    getCompaniesRanked().then((r) => setRanked(r.companies)).catch(() => {});
     fetch("/bg_oblasti.geojson").then((r) => r.json()).then(setGeo).catch(() => {});
   }, []);
+
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return s ? ranked.filter((c) => (c.name ?? "").toLowerCase().includes(s) || c.eik.includes(s)) : ranked;
+  }, [ranked, q]);
 
   const byName = useMemo(() => Object.fromEntries(regions.map((r) => [r.region_name, r])), [regions]);
   const k = sum?.kpis;
@@ -119,7 +129,7 @@ export default function Analytics() {
           <div className="glass ia-mapcard">
             <div className="ia-cap"><h2 className="display">Горещи точки на риска</h2><span>дял от парите през единствен участник (относително) · покритие {coverage}%</span></div>
             <MapContainer className="ia-map" center={[42.73, 25.4]} zoom={7} zoomControl={false}
-              scrollWheelZoom={false} doubleClickZoom={false} touchZoom={false} boxZoom={false} keyboard={false} attributionControl>
+              scrollWheelZoom={false} doubleClickZoom={false} touchZoom={false} boxZoom={false} keyboard={false} dragging={false} attributionControl>
               <TileLayer key={theme} url={TILES[theme]} attribution="&copy; OpenStreetMap &copy; CARTO" subdomains="abcd" />
               {geo && regions.length > 0 && <GeoJSON key={theme + regions.length} data={geo} style={style} onEachFeature={onEach} />}
             </MapContainer>
@@ -150,17 +160,35 @@ export default function Analytics() {
               const t = "company:" + c.eik, e = exp[t];
               return (
                 <article className="glass ia-case" key={c.eik}>
-                  <div className="ia-party"><b>{c.name}</b></div>
+                  <Link className="ia-coname" to={`/company/${encodeURIComponent(c.eik)}`}><b>{c.name}</b></Link>
                   <small className="ia-eik mono">ЕИК {c.eik}</small>
                   <p className="ia-desc">Спечелил <b>{compactEur(c.won_eur)}</b> по {fmtNum(c.contracts)} договора от {fmtNum(c.buyers)} възложителя · {c.single_bid_pct}% единствен участник · <span className="t-red">{fmtNum(c.flags)} флага</span></p>
-                  <button className="btn btn-primary ia-ai" onClick={() => doExplain(t)} disabled={e?.loading}>
-                    <Sparkle size={14} weight="fill" /> {e?.loading ? "Анализ…" : "AI разбор"}
-                  </button>
+                  <div className="ia-cobtns">
+                    <button className="btn btn-primary ia-ai" onClick={() => doExplain(t)} disabled={e?.loading}>
+                      <Sparkle size={14} weight="fill" /> {e?.loading ? "Анализ…" : "AI разбор"}
+                    </button>
+                    <Link className="btn ia-ai" to={`/company/${encodeURIComponent(c.eik)}`}>Профил →</Link>
+                  </div>
                   {e && !e.loading && <p className="ia-narr">{e.text}</p>}
                 </article>
               );
             })}
           </div>
+        </section>
+
+        <section>
+          <div className="ia-cap"><h2 className="display"><Buildings size={20} weight="fill" /> Всички фирми по риск</h2><span>{fmtNum(ranked.length)} фирми, 100% до 0% (повечето са чисти)</span></div>
+          <input className="field ia-search" placeholder="Търси по име или ЕИК…" value={q} onChange={(ev) => setQ(ev.target.value)} />
+          <div className="ia-ranklist">
+            {filtered.slice(0, 300).map((c) => (
+              <Link className="ia-rankrow" key={c.eik} to={`/company/${encodeURIComponent(c.eik)}`}>
+                <span className={`ia-pill ${lvlPct(c.risk_pct)}`}>{c.risk_pct}%</span>
+                <span className="ia-rank-main"><b>{c.name ?? c.eik}</b><small className="mono">ЕИК {c.eik}</small></span>
+                <span className="ia-rank-n mono">{compactEur(c.won_eur)} · {fmtNum(c.contracts)} дог · {fmtNum(c.flags)} флага</span>
+              </Link>
+            ))}
+          </div>
+          <p className="ia-muted" style={{ marginTop: ".6rem", fontSize: ".8rem" }}>показани {Math.min(300, filtered.length)} от {fmtNum(filtered.length)}</p>
         </section>
 
         <section>
@@ -276,6 +304,18 @@ const CSS = `
 .ia-obsht{display:inline-block;margin-top:.4rem;font-size:.74rem;font-weight:600;color:var(--cool);background:rgba(91,200,214,.12);border-radius:6px;padding:.1rem .45rem}
 .ia-eik{color:var(--ink-3);font-size:.72rem}
 .ia-desc{font-size:.85rem;color:var(--ink-2);line-height:1.5;margin:.5rem 0 .2rem}.ia-desc b{color:var(--ink)}
+.ia-coname{color:var(--ink);text-decoration:none;font-size:1.02rem}.ia-coname:hover b{color:var(--orange)}
+.ia-cobtns{display:flex;gap:.5rem;margin-top:.7rem;flex-wrap:wrap}
+.ia-cobtns .ia-ai{margin-top:0;text-decoration:none}
+.ia-search{margin:.4rem 0 .9rem;max-width:420px}
+.ia-ranklist{display:flex;flex-direction:column;gap:.3rem}
+.ia-rankrow{display:flex;align-items:center;gap:.7rem;padding:.5rem .7rem;border-radius:var(--r-sm);background:var(--surface);border:1px solid var(--line);text-decoration:none;color:var(--ink);transition:background .15s var(--ease)}
+.ia-rankrow:hover{background:var(--control)}
+.ia-rankrow .ia-pill{min-width:48px;text-align:center}
+.ia-rank-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.ia-rank-main b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.9rem}
+.ia-rank-main small{color:var(--ink-3);font-size:.7rem}
+.ia-rank-n{color:var(--ink-2);font-size:.78rem;white-space:nowrap}
 .ia-chip{display:inline-block;background:var(--control);color:var(--ink-3);border-radius:6px;padding:.05rem .35rem;font-size:.68rem;font-family:"JetBrains Mono",monospace}
 .ia-reasons{list-style:none;margin:.6rem 0 .2rem;padding:0;display:flex;flex-direction:column;gap:.3rem}
 .ia-reasons li{font-size:.84rem;color:var(--ink-2);padding-left:1rem;position:relative}

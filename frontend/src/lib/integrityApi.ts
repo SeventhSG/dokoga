@@ -54,6 +54,30 @@ export const getTopRisk = () => getJSON<{ top_risk: TopRisk[] }>("/integrity/top
 export const getNetwork = () => getJSON<{ network: NetworkLink[] }>("/integrity/network");
 export const getCases = () => getJSON<{ cases: Case[] }>("/integrity/cases");
 
+export interface RankedCompany {
+  eik: string; name: string | null; contracts: number; won_eur: number;
+  single_bid_pct: number; flags: number; risk_pct: number;
+}
+export interface Owner { person_key: string; name: string | null; role: string; id_type: string }
+export interface SuspiciousContract {
+  id: string; buyer: string | null; amount_eur: number | null; obshtina: string | null; reasons: string[]; risk: number;
+}
+export interface YearRow { year: string; value_eur: number; contracts: number }
+export interface CompanyDetail {
+  eik: string; name: string | null; legal_form: string | null; contracts: number; won_eur: number;
+  buyers: number; single_bid_pct: number; risk_pct: number; flags: Record<string, number>;
+  owners: Owner[]; suspicious: SuspiciousContract[]; by_year: YearRow[]; income: null; ml_why: string;
+}
+export interface PersonCompany { eik: string; name: string | null; role: string; won_eur: number; contracts: number }
+export interface PersonDetail {
+  person_key: string; name: string | null; id_type: string | null;
+  companies: PersonCompany[]; total_won_eur: number; income: null;
+}
+
+export const getCompaniesRanked = () => getJSON<{ companies: RankedCompany[] }>("/integrity/companies-ranked");
+export const getCompany = (eik: string) => getJSON<CompanyDetail>(`/integrity/company?eik=${encodeURIComponent(eik)}`);
+export const getPerson = (key: string) => getJSON<PersonDetail>(`/integrity/person?key=${encodeURIComponent(key)}`);
+
 export async function explain(target: string): Promise<Explain> {
   const res = await fetch(`${API_BASE}/integrity/explain`, {
     method: "POST",
