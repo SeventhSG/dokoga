@@ -12,8 +12,10 @@ DB_PATH = os.path.join(DATA, "integrity.sqlite")
 GEO = os.path.join(DATA, "bg_oblasti.geojson")
 
 # The raw .sqlite is gitignored (large); the repo ships a gzipped copy. On a fresh checkout/deploy
-# inflate it once so the analytics endpoints have data without any manual step.
-if not os.path.exists(DB_PATH) and os.path.exists(DB_PATH + ".gz"):
+# inflate it so the analytics endpoints have data without any manual step. Also re-inflate if the
+# file exists but is tiny - sqlite auto-creates an empty 0-byte db on first connect, which would
+# otherwise leave analytics empty forever.
+if os.path.exists(DB_PATH + ".gz") and (not os.path.exists(DB_PATH) or os.path.getsize(DB_PATH) < 1_000_000):
     import gzip
     import shutil
     with gzip.open(DB_PATH + ".gz", "rb") as _fin, open(DB_PATH, "wb") as _fout:
